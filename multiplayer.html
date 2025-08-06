@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Cooldown Multiplayer</title>
+  <style>
+    body {
+      font-family: Montserrat, sans-serif;
+      background: #1e3c72;
+      color: #fff;
+      padding: 30px;
+      text-align: center;
+    }
+    input, button {
+      font-size: 1rem;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 6px;
+    }
+    #game { display: none; }
+  </style>
+</head>
+<body>
+  <div id="welcome">
+    <h1>Multiplayer Cooldown Trainer</h1>
+    <input id="nameInput" placeholder="Ton pseudo...">
+    <button id="joinBtn">Rejoindre</button>
+  </div>
+
+  <div id="game">
+    <h2>Joueurs connectés :</h2>
+    <ul id="players"></ul>
+
+    <div id="sortDisplay" style="margin-top:30px;font-size:1.2rem;"></div>
+    <div id="timer" style="font-size:1.5rem;margin:10px 0;"></div>
+
+    <div id="answerSection" style="display:none">
+      <input id="answerInput" placeholder="Cooldown en sec">
+      <button id="submitBtn">Envoyer</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, onDisconnect, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBjkxLbnCBZYvcyNRrGxwphT6nCyPOcGfI",
+      authDomain: "cdguesser.firebaseapp.com",
+      projectId: "cdguesser",
+      storageBucket: "cdguesser.appspot.com",
+      messagingSenderId: "1094034546231",
+      appId: "1:1094034546231:web:1baaeca8470b211cf529b2",
+      databaseURL: "https://cdguesser-default-rtdb.europe-west1.firebasedatabase.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let playerId = null;
+    let playerName = "";
+    let currentTurn = 0;
+    let totalTurns = 10;
+    let turnDuration = 30;
+    let timerInterval;
+
+    async function fetchSpells() {
+      const res = await fetch("data/championFull.json");
+      const data = await res.json();
+      const spells = [];
+      for (const key in data.data) {
+        const champ = data.data[key];
+        champ.spells.forEach((spell, i) => {
+          spells.push({
+            champ: champ.name,
+            key: ['Q','W','E','R'][i],
+            cd: spell.cooldown[0],
+            name: spell.name
+          });
+        });
+      }
+      return spells;
+    }
+
+    const gameRef = ref(db, 'game');
+    const playersRef = ref(db, 'players');
+
+    document.getElementById("joinBtn").addEventListener("click", async () => {
+      playerName = document.getElementById("nameInput").value.trim();
+      if (!playerName) return alert("Entre un pseudo valide");
+
+      const newPlayerRef = push(playersRef);
+      playerId = newPlayerRef.key;
+
+      await set(newPlayerRef, {
+        name: playerName,
+        score: 0,
+        lastAnswer: null
+      });
+
+      onDisconnect(newPlayerRef).remove();
+
+      document.getElementById("welcome").style.display = "none";
+      document.getElementById("game").style.display = "block";
+
+      onValue(ref(db, 'players'), async (snap) => {
+        const data = snap.val();
+        if (Object.keys(data).length >= 1 && currentTurn === 0) {
+          const spells = await fetchSpells();
+          lancerPartie(spells);
+        }
+      }, { onlyOnce: true });
+    });
+
+    async function lancerPartie(spells) {
+      await set(gameRef, { turn: 1, sort: getRandomSpell(spells), timestamp: Date.now() });
+    }
+
+    function getRandomSpell(spells) {
+      const s = spells[Math.floor(Math.random() * spells.length)];
+      return {
+        champ: s.champ,
+        key: s.key,
+        cd: s.cd,
+        name: s.name
+      };
+    }
+
+    const playersList = document.getElementById("players");
+    onValue(playersRef, (snapshot) => {
+      const data = snapshot.val();
+      playersList.innerHTML = "";
+      for (let id in data) {
+        const p = data[id];
+        const li = document.createElement("li");
+        li.textContent = `${p.name} - Score : ${p.score}`;
+        playersList.appendChild(li);
+      }
+    });
+
+    onValue(gameRef, async (snap) => {
+      const game = snap.val();
+      if (!game) return;
+      currentTurn = game.turn;
+      if (currentTurn > totalTurns) return finDePartie();
+
+      const sortDisplay = document.getElementById("sortDisplay");
+      sortDisplay.innerHTML = `<strong>${game.sort.champ} ${game.sort.key}</strong> - ${game.sort.name}`;
+
+      document.getElementById("answerSection").style.display = "block";
+      document.getElementById("timer").textContent = `${turnDuration}s`;
+      document.getElementById("answerInput").value = "";
+
+      clearInterval(timerInterval);
+      let secondsLeft = turnDuration;
+      timerInterval = setInterval(() => {
+        secondsLeft--;
+        document.getElementById("timer").textContent = `${secondsLeft}s`;
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          validerReponse(game);
+        }
+      }, 1000);
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const val = document.getElementById("answerInput").value;
+      await update(ref(db, `players/${playerId}`), { lastAnswer: val });
+    });
+
+    async function validerReponse(game) {
+      onValue(ref(db, 'players'), async (snap) => {
+        const allPlayers = snap.val();
+        for (let id in allPlayers) {
+          const p = allPlayers[id];
+          const rep = parseInt(p.lastAnswer);
+          const bonne = parseInt(game.sort.cd);
+          if (!isNaN(rep)) {
+            const ecart = Math.abs(rep - bonne);
+            const gain = Math.max(0, 10 - ecart);
+            await update(ref(db, `players/${id}`), {
+              score: p.score + gain,
+              lastAnswer: null
+            });
+          }
+        }
+        if (currentTurn < totalTurns) {
+          const spells = await fetchSpells();
+          await set(gameRef, { turn: currentTurn + 1, sort: getRandomSpell(spells), timestamp: Date.now() });
+        } else {
+          await set(gameRef, { turn: totalTurns + 1 });
+        }
+      }, { onlyOnce: true });
+    }
+
+    function finDePartie() {
+      document.getElementById("sortDisplay").innerHTML = "🎉 Fin de la partie !";
+      document.getElementById("answerSection").style.display = "none";
+    }
+  </script>
+</body>
+</html>
