@@ -18,13 +18,25 @@
       padding: 20px;
     }
     h1, h2, h3 { margin: 10px 0; text-align: center; }
-    #modeSelector { margin-bottom: 20px; }
-    select, input[type="text"] {
+    #modeSelector {
+      margin-bottom: 20px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #topBar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+    select, input[type="text"], label {
       padding: 10px;
       font-size: 1rem;
       border-radius: 6px;
       border: none;
-      margin: 10px;
+      margin: 5px;
     }
     button {
       background: #ffd700;
@@ -68,9 +80,36 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-  </style>
+    #helpSection {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      max-width: 500px;
+      display: none;
+    }
+      @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg); }
+      10% { transform: translate(-1px, -2px) rotate(-1deg); }
+      20% { transform: translate(-3px, 0px) rotate(1deg); }
+      30% { transform: translate(3px, 2px) rotate(0deg); }
+      40% { transform: translate(1px, -1px) rotate(1deg); }
+      50% { transform: translate(-1px, 2px) rotate(-1deg); }
+      60% { transform: translate(-3px, 1px) rotate(0deg); }
+      70% { transform: translate(3px, 1px) rotate(-1deg); }
+      80% { transform: translate(-1px, -1px) rotate(1deg); }
+      90% { transform: translate(1px, 2px) rotate(0deg); }
+      100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
+</style>
 </head>
 <body>
+  <audio id="failSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7c00edc9b7.mp3?filename=game-over-arcade-6435.mp3"></audio>
+  <audio id="beepSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_195eaf4bfa.mp3?filename=beep-6-96275.mp3"></audio>
+  <div id="topBar">
+    <button onclick="toggleHelp()">🛈 Aide</button>
+  </div>
+
   <h1>Cooldown Trainer - LoL</h1>
 
   <div id="modeSelector">
@@ -80,6 +119,7 @@
       <option value="chrono">Chrono (60s)</option>
       <option value="hardcore">Hardcore</option>
     </select>
+
     <button onclick="demarrerSession()">Démarrer</button>
   </div>
 
@@ -98,31 +138,46 @@
 
   <div id="historique"></div>
 
+  <div id="helpSection">
+    <h3>Aide Cooldowns</h3>
+    <label for="championSelect">Choisissez un champion :</label>
+    <input type="text" id="championSearch" placeholder="🔍 Rechercher un champion" oninput="filtrerChampions()">
+    <select id="championSelect" onchange="afficherCooldownChampion()">
+      <option value="">-- Sélectionnez --</option>
+    </select>
+    <div id="cooldownList" style="margin-top:10px;"></div>
+  </div>
+
   <script>
     let allSpells = {}, currentSpell = {}, modeJeu = 'normal';
     let dejaVerifie = false, score = 0, total = 0;
     let historique = [], sessionActive = false, timer = null, timeLeft = 60;
 
+    async function fetchData() {
+      const res = await fetch("data/championFull.json");
+      const json = await res.json();
+      return json.data;
+    }
+
     async function chargerSort() {
       if (!sessionActive) return;
       if (Object.keys(allSpells).length === 0) {
-        const res = await fetch("data/championFull.json");
-        const json = await res.json();
-        const champions = json.data;
+        const champions = await fetchData();
         for (const champKey in champions) {
           const champ = champions[champKey];
           const spells = champ.spells;
           if (spells.length === 4) {
-            allSpells[champ.name + " Q"] = spells[0].cooldown[0];
-            allSpells[champ.name + " W"] = spells[1].cooldown[0];
-            allSpells[champ.name + " E"] = spells[2].cooldown[0];
-            allSpells[champ.name + " R"] = spells[3].cooldown[0];
+            ['Q', 'W', 'E', 'R'].forEach((key, i) => {
+              allSpells[champ.name + ' ' + key] = {
+                cd: spells[i].cooldown[0]
+              };
+            });
           }
         }
       }
       const keys = Object.keys(allSpells);
       const randomKey = keys[Math.floor(Math.random() * keys.length)];
-      currentSpell = { name: randomKey, cd: allSpells[randomKey].toString() };
+      currentSpell = { name: randomKey, cd: allSpells[randomKey].cd.toString() };
       dejaVerifie = false;
       document.getElementById("verifierBtn").disabled = false;
       document.getElementById("sort").innerText = currentSpell.name;
@@ -133,28 +188,53 @@
 
     function verifier() {
       if (!sessionActive || dejaVerifie) return;
-      const input = document.getElementById("cdInput").value.trim();
-      const res = document.getElementById("resultat");
-      if (!/^\d+$/.test(input)) {
-        res.innerText = "⚠️ Entrez un nombre valide";
-        res.style.color = "#FFA500";
+
+      const cdInput = document.getElementById("cdInput");
+      const cd = cdInput.value.trim();
+      const resultatEl = document.getElementById("resultat");
+
+      if (!/^\d+$/.test(cd)) {
+        resultatEl.innerText = "⚠️ Veuillez entrer un nombre valide";
+        resultatEl.style.color = "#FFA500";
         return;
       }
+
       dejaVerifie = true;
       document.getElementById("verifierBtn").disabled = true;
-      const correct = input === currentSpell.cd;
-      if (correct) score++; else if (modeJeu === 'hardcore') return finSession();
+
+      const estCorrect = cd === currentSpell.cd;
+      resultatEl.innerText = estCorrect
+        ? "✅ Correct !"
+        : `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
+      resultatEl.style.color = estCorrect ? "#4CAF50" : "#F44336";
+
       total++;
-      res.innerText = correct ? "✅ Correct !" : `❌ Faux. CD : ${currentSpell.cd}`;
-      res.style.color = correct ? "#4CAF50" : "#F44336";
-      historique.push({ sort: currentSpell.name, reponse: input, correct: currentSpell.cd, status: correct });
-      majScore(); ajouterCarteHistorique(historique[historique.length - 1]);
+      if (estCorrect) score++;
+
+      historique.push({
+        sort: currentSpell.name,
+        reponse: cd,
+        correct: currentSpell.cd,
+        status: estCorrect
+      });
+
+      majScore();
+      ajouterCarteHistorique(historique[historique.length - 1]);
+
+      if (!estCorrect && modeJeu === 'hardcore') {
+        finSession();
+      }
     }
 
     function ajouterCarteHistorique(e) {
       const c = document.createElement("div");
       c.className = "essai " + (e.status ? "correct" : "incorrect");
-      c.innerHTML = `<strong>${e.sort}</strong><div>Votre réponse : ${e.reponse}</div><div>CD : ${e.correct}</div>`;
+      c.innerHTML = `
+        <strong>${e.sort}</strong><br>
+        <span>Votre réponse : ${e.reponse}</span><br>
+        <span>CD correct : ${e.correct}</span><br>
+        <span>${e.status ? "✅ Bonne réponse" : "❌ Mauvaise réponse"}</span>
+      `;
       document.getElementById("historique").prepend(c);
     }
 
@@ -166,6 +246,46 @@
       chargerSort();
     }
 
+    function toggleHelp() {
+      const section = document.getElementById("helpSection");
+      section.style.display = section.style.display === "none" ? "block" : "none";
+      if (section.style.display === "block") loadChampionList();
+    }
+
+    async function loadChampionList() {
+  const champions = await fetchData();
+  window.championList = Object.values(champions).sort((a, b) => a.name.localeCompare(b.name));
+  const select = document.getElementById("championSelect");
+  select.innerHTML = '<option value="">-- Sélectionnez --</option>';
+  window.championList.forEach(champ => {
+    const opt = document.createElement("option");
+    opt.value = champ.name;
+    opt.textContent = champ.name;
+    select.appendChild(opt);
+  });
+}
+
+    async function afficherCooldownChampion() {
+  const selected = document.getElementById("championSelect").value;
+  if (!selected) return;
+  fetchData().then(champions => {
+    const champ = Object.values(champions).find(c => c.name === selected);
+    const cds = champ.spells.map((s, i) => `
+      <div style="margin: 5px 0; display: flex; align-items: center; gap: 10px;">
+        <img src='https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${s.image.full}' alt='${s.name}'  width='32' height='32' style='border-radius:4px;'>
+        <div>
+          <div><strong>${['Q','W','E','R'][i]}:</strong> ${s.cooldown[0]} sec</div>
+          <div style="font-size: 0.85rem; color: #ccc;"><strong>${s.name}</strong></div>
+          <div style="font-size: 0.75rem; color: #aaa;">
+            🌀 Portée : ${s.rangeBurn} | 💥 Dégâts : ${s.effectBurn[1] || '-'} | 🔋 Mana : ${s.costBurn}
+          </div>
+        </div>
+      </div>
+    `);
+    document.getElementById("cooldownList").innerHTML = `<strong>${champ.name}</strong><br>` + cds.join("");
+  });
+}
+
     function demarrerSession() {
       modeJeu = document.getElementById("mode").value;
       sessionActive = true; score = 0; total = 0; historique = [];
@@ -174,12 +294,20 @@
       document.getElementById("resetBtn").style.display = "none";
       document.getElementById("nextBtn").disabled = false;
       document.getElementById("finBtn").disabled = false;
+      document.getElementById("helpSection").style.display = "none";
       majScore();
       chargerSort();
       if (modeJeu === 'chrono') lancerChrono();
     }
 
     function finSession() {
+  if (modeJeu === 'hardcore') {
+    const failSound = document.getElementById("failSound");
+    if (failSound) failSound.play();
+    document.body.style.animation = 'shake 0.6s';
+    setTimeout(() => document.body.style.animation = '', 600);
+    alert('💀 GAME OVER - Mode Hardcore');
+  }
       sessionActive = false;
       document.getElementById("sort").innerText = "Session terminée.";
       document.getElementById("cdInput").disabled = true;
@@ -198,12 +326,18 @@
     }
 
     function lancerChrono() {
-      timeLeft = 60;
-      const tDisplay = document.getElementById("timerDisplay");
-      tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
-      timer = setInterval(() => {
+  timeLeft = 60;
+  const tDisplay = document.getElementById("timerDisplay");
+  tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
+        updateBackgroundColor(timeLeft);
+  updateBackgroundColor(timeLeft);
+  timer = setInterval(() => {
         timeLeft--;
         tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
+        if (timeLeft <= 10) {
+          const beep = document.getElementById("beepSound");
+          if (beep) beep.play();
+        }
         if (timeLeft <= 0) {
           clearInterval(timer);
           finSession();
@@ -219,6 +353,25 @@
         document.getElementById("resultat").innerText = "";
       });
     };
-  </script>
+  function filtrerChampions() {
+  const input = document.getElementById("championSearch").value.toLowerCase();
+  const select = document.getElementById("championSelect");
+  select.innerHTML = '<option value="">-- Sélectionnez --</option>';
+  window.championList
+    .filter(champ => champ.name.toLowerCase().includes(input))
+    .forEach(champ => {
+      const opt = document.createElement("option");
+      opt.value = champ.name;
+      opt.textContent = champ.name;
+      select.appendChild(opt);
+    });
+}
+function updateBackgroundColor(time) {
+  const percent = time / 60;
+  const red = Math.round(255 * (1 - percent));
+  const blue = Math.round(152 + (100 * percent));
+  document.body.style.background = `linear-gradient(135deg, rgb(${red},40,40), rgb(40,40,${blue}))`;
+}
+</script>
 </body>
 </html>
