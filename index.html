@@ -2,13 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Cooldown Champions LoL</title>
+  <title>Cooldown Trainer - LoL</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'Montserrat', sans-serif;
@@ -20,35 +17,15 @@
       min-height: 100vh;
       padding: 20px;
     }
-
-    h1 {
-      margin-top: 10px;
-      font-size: 1.8rem;
-    }
-
-    h2#sort {
-      font-size: 2rem;
-      margin: 10px 0 20px 0;
-      text-align: center;
-      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
-    }
-
-    #cdInput {
-      padding: 10px 15px;
-      font-size: 1.2rem;
+    h1, h2, h3 { margin: 10px 0; text-align: center; }
+    #modeSelector { margin-bottom: 20px; }
+    select, input[type="text"] {
+      padding: 10px;
+      font-size: 1rem;
       border-radius: 6px;
       border: none;
-      width: 200px;
-      max-width: 80vw;
-      margin-bottom: 15px;
-      transition: box-shadow 0.3s ease;
+      margin: 10px;
     }
-
-    #cdInput:focus {
-      outline: none;
-      box-shadow: 0 0 8px #ffd700;
-    }
-
     button {
       background: #ffd700;
       border: none;
@@ -62,115 +39,79 @@
       transition: background-color 0.3s ease, transform 0.15s ease;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
-
-    button:hover {
-      background: #ffea3c;
-      transform: scale(1.05);
-    }
-
-    button:active {
-      transform: scale(0.95);
-    }
-
-    #resultat {
-      font-size: 1.5rem;
+    button:hover { background: #ffea3c; transform: scale(1.05); }
+    button:active { transform: scale(0.95); }
+    #resultat, #score, #timerDisplay {
+      font-size: 1.2rem;
       font-weight: 600;
       min-height: 2em;
-      margin-top: 10px;
-      transition: color 0.3s ease;
       text-align: center;
     }
-
     #historique {
       margin-top: 30px;
-      width: 100%;
       max-width: 600px;
+      width: 100%;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-
     .essai {
       background: rgba(255, 255, 255, 0.1);
       border-left: 5px solid;
-      padding: 10px 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      padding: 10px;
+      border-radius: 6px;
       animation: fadeIn 0.3s ease;
     }
-
-    .essai.correct {
-      border-color: #4CAF50;
-    }
-
-    .essai.incorrect {
-      border-color: #F44336;
-    }
-
-    .essai span {
-      display: block;
-      margin-top: 3px;
-      font-size: 0.95rem;
-    }
-
+    .correct { border-color: #4CAF50; }
+    .incorrect { border-color: #F44336; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-
-    @media (max-width: 480px) {
-      h2#sort {
-        font-size: 1.5rem;
-      }
-
-      #cdInput {
-        width: 100%;
-      }
-
-      button {
-        width: 100%;
-        margin: 5px 0;
-      }
-    }
   </style>
 </head>
 <body>
-  <h1 id="score">Score : 0 / 0</h1>
-  <h2 id="sort">Chargement...</h2>
+  <h1>Cooldown Trainer - LoL</h1>
 
-  <input type="text" id="cdInput" placeholder="Entrer le CD" />
-  <div>
-    <button id="verifierBtn" onclick="verifier()">Vérifier</button>
-    <button onclick="cdSuivant()">CD suivant</button>
-    <button onclick="finSession()">Fin de session</button>
-    <button onclick="nouvelleSession()">Nouvelle session</button>
+  <div id="modeSelector">
+    <label for="mode">Choisissez un mode :</label>
+    <select id="mode">
+      <option value="normal">Normal</option>
+      <option value="chrono">Chrono (60s)</option>
+      <option value="hardcore">Hardcore</option>
+    </select>
+    <button onclick="demarrerSession()">Démarrer</button>
   </div>
 
+  <h2 id="sort">Prêt ?</h2>
+  <input type="text" id="cdInput" placeholder="Entrer le CD" disabled />
+  <div>
+    <button id="verifierBtn" onclick="verifier()" disabled>Vérifier</button>
+    <button onclick="cdSuivant()" disabled id="nextBtn">CD suivant</button>
+    <button onclick="finSession()" disabled id="finBtn">Fin de session</button>
+    <button onclick="nouvelleSession()" style="display:none" id="resetBtn">Nouvelle session</button>
+  </div>
+
+  <div id="timerDisplay"></div>
   <p id="resultat"></p>
+  <h3 id="score"></h3>
 
   <div id="historique"></div>
 
   <script>
-    let allSpells = {};
-    let currentSpell = { name: "", cd: "" };
-    let dejaVerifie = false;
-    let score = 0;
-    let total = 0;
-    let historique = [];
-    let sessionActive = true;
+    let allSpells = {}, currentSpell = {}, modeJeu = 'normal';
+    let dejaVerifie = false, score = 0, total = 0;
+    let historique = [], sessionActive = false, timer = null, timeLeft = 60;
 
     async function chargerSort() {
       if (!sessionActive) return;
-
       if (Object.keys(allSpells).length === 0) {
         const res = await fetch("data/championFull.json");
         const json = await res.json();
         const champions = json.data;
-
         for (const champKey in champions) {
           const champ = champions[champKey];
           const spells = champ.spells;
-
           if (spells.length === 4) {
             allSpells[champ.name + " Q"] = spells[0].cooldown[0];
             allSpells[champ.name + " W"] = spells[1].cooldown[0];
@@ -179,20 +120,12 @@
           }
         }
       }
-
       const keys = Object.keys(allSpells);
       const randomKey = keys[Math.floor(Math.random() * keys.length)];
-      const cd = allSpells[randomKey];
-
-      currentSpell = {
-        name: randomKey,
-        cd: cd.toString()
-      };
-
+      currentSpell = { name: randomKey, cd: allSpells[randomKey].toString() };
       dejaVerifie = false;
       document.getElementById("verifierBtn").disabled = false;
-
-      document.getElementById("sort").innerText = randomKey;
+      document.getElementById("sort").innerText = currentSpell.name;
       document.getElementById("resultat").innerText = "";
       document.getElementById("cdInput").value = "";
       document.getElementById("cdInput").focus();
@@ -200,90 +133,89 @@
 
     function verifier() {
       if (!sessionActive || dejaVerifie) return;
-
-      const cdInput = document.getElementById("cdInput");
-      const cd = cdInput.value.trim();
-      const resultatEl = document.getElementById("resultat");
-
-      if (!/^\d+$/.test(cd)) {
-        resultatEl.innerText = "⚠️ Veuillez entrer un nombre valide";
-        resultatEl.style.color = "#FFA500";
+      const input = document.getElementById("cdInput").value.trim();
+      const res = document.getElementById("resultat");
+      if (!/^\d+$/.test(input)) {
+        res.innerText = "⚠️ Entrez un nombre valide";
+        res.style.color = "#FFA500";
         return;
       }
-
       dejaVerifie = true;
       document.getElementById("verifierBtn").disabled = true;
-
-      const estCorrect = cd === currentSpell.cd;
-      resultatEl.innerText = estCorrect ? "✅ Correct !" : `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
-      resultatEl.style.color = estCorrect ? "#4CAF50" : "#F44336";
-
+      const correct = input === currentSpell.cd;
+      if (correct) score++; else if (modeJeu === 'hardcore') return finSession();
       total++;
-      if (estCorrect) score++;
-
-      // Ajouter à l’historique
-      historique.push({
-        sort: currentSpell.name,
-        reponse: cd,
-        correct: currentSpell.cd,
-        status: estCorrect
-      });
-
-      majScore();
-      ajouterCarteHistorique(historique[historique.length - 1]);
+      res.innerText = correct ? "✅ Correct !" : `❌ Faux. CD : ${currentSpell.cd}`;
+      res.style.color = correct ? "#4CAF50" : "#F44336";
+      historique.push({ sort: currentSpell.name, reponse: input, correct: currentSpell.cd, status: correct });
+      majScore(); ajouterCarteHistorique(historique[historique.length - 1]);
     }
 
-    function ajouterCarteHistorique(essai) {
-      const container = document.getElementById("historique");
-      const card = document.createElement("div");
-      card.className = "essai " + (essai.status ? "correct" : "incorrect");
-      card.innerHTML = `
-        <strong>${essai.sort}</strong>
-        <span>Votre réponse : ${essai.reponse}</span>
-        <span>CD correct : ${essai.correct}</span>
-        <span>${essai.status ? "✅ Bonne réponse" : "❌ Mauvaise réponse"}</span>
-      `;
-      container.prepend(card);
-    }
-
-    function cdSuivant() {
-      chargerSort();
+    function ajouterCarteHistorique(e) {
+      const c = document.createElement("div");
+      c.className = "essai " + (e.status ? "correct" : "incorrect");
+      c.innerHTML = `<strong>${e.sort}</strong><div>Votre réponse : ${e.reponse}</div><div>CD : ${e.correct}</div>`;
+      document.getElementById("historique").prepend(c);
     }
 
     function majScore() {
       document.getElementById("score").innerText = `Score : ${score} / ${total}`;
     }
 
+    function cdSuivant() {
+      chargerSort();
+    }
+
+    function demarrerSession() {
+      modeJeu = document.getElementById("mode").value;
+      sessionActive = true; score = 0; total = 0; historique = [];
+      document.getElementById("historique").innerHTML = "";
+      document.getElementById("cdInput").disabled = false;
+      document.getElementById("resetBtn").style.display = "none";
+      document.getElementById("nextBtn").disabled = false;
+      document.getElementById("finBtn").disabled = false;
+      majScore();
+      chargerSort();
+      if (modeJeu === 'chrono') lancerChrono();
+    }
+
     function finSession() {
       sessionActive = false;
       document.getElementById("sort").innerText = "Session terminée.";
-      document.getElementById("resultat").innerText = `🎯 Résultat final : ${score} bonnes réponses sur ${total} essais`;
-      document.getElementById("verifierBtn").disabled = true;
       document.getElementById("cdInput").disabled = true;
+      document.getElementById("verifierBtn").disabled = true;
+      document.getElementById("nextBtn").disabled = true;
+      document.getElementById("finBtn").disabled = true;
+      document.getElementById("resetBtn").style.display = "inline-block";
+      if (timer) clearInterval(timer);
+      document.getElementById("timerDisplay").innerText = '';
     }
 
     function nouvelleSession() {
-      score = 0;
-      total = 0;
-      historique = [];
-      sessionActive = true;
-      document.getElementById("historique").innerHTML = "";
-      document.getElementById("cdInput").disabled = false;
-      majScore();
-      chargerSort();
+      document.getElementById("cdInput").value = "";
+      document.getElementById("resultat").innerText = "";
+      demarrerSession();
+    }
+
+    function lancerChrono() {
+      timeLeft = 60;
+      const tDisplay = document.getElementById("timerDisplay");
+      tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          finSession();
+        }
+      }, 1000);
     }
 
     window.onload = () => {
-      chargerSort();
-
-      const cdInput = document.getElementById("cdInput");
-      cdInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          verifier();
-        }
+      document.getElementById("cdInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") verifier();
       });
-
-      cdInput.addEventListener("input", () => {
+      document.getElementById("cdInput").addEventListener("input", () => {
         document.getElementById("resultat").innerText = "";
       });
     };
