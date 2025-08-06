@@ -3,19 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <title>Cooldown Champions LoL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h2#sort {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+
+        #cdInput {
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            border-radius: 6px;
+            border: none;
+            width: 200px;
+            max-width: 80vw;
+            margin-bottom: 15px;
+            transition: box-shadow 0.3s ease;
+        }
+
+        #cdInput:focus {
+            outline: none;
+            box-shadow: 0 0 8px #ffd700;
+        }
+
+        button {
+            background: #ffd700;
+            border: none;
+            color: #222;
+            font-weight: 700;
+            padding: 10px 20px;
+            margin: 0 10px 15px 0;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.15s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            background: #ffea3c;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        #resultat {
+            font-size: 1.5rem;
+            font-weight: 600;
+            min-height: 2em;
+            margin-top: 10px;
+            transition: color 0.3s ease;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            h2#sort {
+                font-size: 2rem;
+            }
+            #cdInput {
+                width: 100%;
+            }
+            button {
+                margin: 10px 5px 15px 5px;
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
     <h2 id="sort">Chargement...</h2>
 
-    <input type="text" id="cdInput" placeholder="Entrer le CD">
-    <button onclick="verifier()">Vérifier</button>
-    <button onclick="reessayer()">Réessayer</button>
+    <input type="text" id="cdInput" placeholder="Entrer le CD" />
+    <div>
+        <button onclick="verifier()">Vérifier</button>
+        <button onclick="reessayer()">Réessayer</button>
+    </div>
 
     <p id="resultat"></p>
 
     <script>
         let allSpells = {};
         let currentSpell = { name: "", cd: "" };
+        let timeoutId = null;
 
         async function chargerSort() {
             if (Object.keys(allSpells).length === 0) {
@@ -47,23 +136,56 @@
 
             document.getElementById("sort").innerText = randomKey;
             document.getElementById("resultat").innerText = "";
+            document.getElementById("cdInput").value = "";
+            document.getElementById("cdInput").focus();
         }
 
         function verifier() {
-            const cd = document.getElementById("cdInput").value.trim();
+            const cdInput = document.getElementById("cdInput");
+            const cd = cdInput.value.trim();
+            const resultatEl = document.getElementById("resultat");
+
+            if (!/^\d+$/.test(cd)) {
+                resultatEl.innerText = "⚠️ Veuillez entrer un nombre valide";
+                resultatEl.style.color = "#FFA500"; // orange
+                return;
+            }
+
             if (cd === currentSpell.cd) {
-                document.getElementById("resultat").innerText = "✅ Correct !";
+                resultatEl.innerText = "✅ Correct !";
+                resultatEl.style.color = "#4CAF50"; // vert
+                setTimeout(() => {
+                    chargerSort();
+                }, 1500);
             } else {
-                document.getElementById("resultat").innerText = `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
+                resultatEl.innerText = `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
+                resultatEl.style.color = "#F44336"; // rouge
             }
         }
 
         function reessayer() {
             chargerSort();
-            document.getElementById("cdInput").value = "";
         }
 
-        window.onload = chargerSort;
+        window.onload = () => {
+            chargerSort();
+
+            const cdInput = document.getElementById("cdInput");
+            cdInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    verifier();
+                }
+            });
+
+            cdInput.addEventListener("input", () => {
+                if (timeoutId) clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    if (cdInput.value.trim().length > 0) {
+                        verifier();
+                    }
+                }, 500);
+            });
+        };
     </script>
 </body>
 </html>
