@@ -18,6 +18,7 @@
       border-radius: 6px;
     }
     #game { display: none; }
+    #newGameBtn { display: none; }
   </style>
 </head>
 <body>
@@ -31,6 +32,8 @@
     <h2>Joueurs connectés :</h2>
     <ul id="players"></ul>
 
+    <button id="startGameBtn">🚀 Lancer une partie</button>
+
     <div id="sortDisplay" style="margin-top:30px;font-size:1.2rem;"></div>
     <div id="timer" style="font-size:1.5rem;margin:10px 0;"></div>
 
@@ -38,11 +41,13 @@
       <input id="answerInput" placeholder="Cooldown en sec">
       <button id="submitBtn">Envoyer</button>
     </div>
+
+    <button id="newGameBtn">🔁 Nouvelle partie</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, onDisconnect, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, onDisconnect, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBjkxLbnCBZYvcyNRrGxwphT6nCyPOcGfI",
@@ -63,8 +68,10 @@
     let totalTurns = 10;
     let turnDuration = 30;
     let timerInterval;
+    let allSpells = [];
 
     async function fetchSpells() {
+      if (allSpells.length > 0) return allSpells;
       const res = await fetch("data/championFull.json");
       const data = await res.json();
       const spells = [];
@@ -79,6 +86,7 @@
           });
         });
       }
+      allSpells = spells;
       return spells;
     }
 
@@ -102,19 +110,31 @@
 
       document.getElementById("welcome").style.display = "none";
       document.getElementById("game").style.display = "block";
-
-      onValue(ref(db, 'players'), async (snap) => {
-        const data = snap.val();
-        if (Object.keys(data).length >= 1 && currentTurn === 0) {
-          const spells = await fetchSpells();
-          lancerPartie(spells);
-        }
-      }, { onlyOnce: true });
     });
 
-    async function lancerPartie(spells) {
-      await set(gameRef, { turn: 1, sort: getRandomSpell(spells), timestamp: Date.now() });
-    }
+    document.getElementById("startGameBtn").addEventListener("click", async () => {
+      const spells = await fetchSpells();
+      await set(gameRef, {
+        turn: 1,
+        sort: getRandomSpell(spells),
+        timestamp: Date.now()
+      });
+      document.getElementById("startGameBtn").style.display = "none";
+    });
+
+    document.getElementById("newGameBtn").addEventListener("click", async () => {
+      await remove(gameRef);
+      const snapshot = await fetch(`${firebaseConfig.databaseURL}/players.json`);
+      const players = await snapshot.json();
+      for (let id in players) {
+        await update(ref(db, `players/${id}`), { score: 0 });
+      }
+      document.getElementById("newGameBtn").style.display = "none";
+      document.getElementById("startGameBtn").style.display = "inline-block";
+      document.getElementById("sortDisplay").textContent = "";
+      document.getElementById("timer").textContent = "";
+      document.getElementById("answerSection").style.display = "none";
+    });
 
     function getRandomSpell(spells) {
       const s = spells[Math.floor(Math.random() * spells.length)];
@@ -186,7 +206,11 @@
         }
         if (currentTurn < totalTurns) {
           const spells = await fetchSpells();
-          await set(gameRef, { turn: currentTurn + 1, sort: getRandomSpell(spells), timestamp: Date.now() });
+          await set(gameRef, {
+            turn: currentTurn + 1,
+            sort: getRandomSpell(spells),
+            timestamp: Date.now()
+          });
         } else {
           await set(gameRef, { turn: totalTurns + 1 });
         }
@@ -196,6 +220,7 @@
     function finDePartie() {
       document.getElementById("sortDisplay").innerHTML = "🎉 Fin de la partie !";
       document.getElementById("answerSection").style.display = "none";
+      document.getElementById("newGameBtn").style.display = "inline-block";
     }
   </script>
 </body>
