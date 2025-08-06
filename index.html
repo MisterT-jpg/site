@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cooldown Champions LoL</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h2 id="sort">Chargement...</h2>
+
+    <input type="text" id="cdInput" placeholder="Entrer le CD">
+    <button onclick="verifier()">Vérifier</button>
+    <button onclick="reessayer()">Réessayer</button>
+
+    <p id="resultat"></p>
+
+    <script>
+        async function chargerSort() {
+            const res = await fetch("http://localhost:5000/get-random");
+            const data = await res.json();
+            document.getElementById("sort").innerText = data.sort;
+            document.getElementById("resultat").innerText = "";
+        }
+
+        async function verifier() {
+            const cd = document.getElementById("cdInput").value;
+            const res = await fetch("http://localhost:5000/check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cd })
+            });
+            const data = await res.json();
+            if (data.correct) {
+                document.getElementById("resultat").innerText = "✅ Correct !";
+            } else {
+                document.getElementById("resultat").innerText = "❌ Faux. Le CD correct était : " + data.answer;
+            }
+        }
+
+        function reessayer() {
+            chargerSort();
+            document.getElementById("cdInput").value = "";
+        }
+
+        // Charger un sort au démarrage
+        window.onload = chargerSort;
+    </script>
+</body>
+</html>
