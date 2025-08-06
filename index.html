@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Cooldown Champions LoL</title>
     <meta charset="UTF-8">
+    <title>Cooldown Champions LoL</title>
 </head>
 <body>
     <h2 id="sort">Chargement...</h2>
@@ -14,25 +14,47 @@
     <p id="resultat"></p>
 
     <script>
+        let allSpells = {};
+        let currentSpell = { name: "", cd: "" };
+
         async function chargerSort() {
-            const res = await fetch("http://localhost:5000/get-random");
-            const data = await res.json();
-            document.getElementById("sort").innerText = data.sort;
+            if (Object.keys(allSpells).length === 0) {
+                const res = await fetch("data/championFull.json");
+                const json = await res.json();
+                const champions = json.data;
+
+                for (const champKey in champions) {
+                    const champ = champions[champKey];
+                    const spells = champ.spells;
+
+                    if (spells.length === 4) {
+                        allSpells[champ.name + " Q"] = spells[0].cooldown[0];
+                        allSpells[champ.name + " W"] = spells[1].cooldown[0];
+                        allSpells[champ.name + " E"] = spells[2].cooldown[0];
+                        allSpells[champ.name + " R"] = spells[3].cooldown[0];
+                    }
+                }
+            }
+
+            const keys = Object.keys(allSpells);
+            const randomKey = keys[Math.floor(Math.random() * keys.length)];
+            const cd = allSpells[randomKey];
+
+            currentSpell = {
+                name: randomKey,
+                cd: cd.toString()
+            };
+
+            document.getElementById("sort").innerText = randomKey;
             document.getElementById("resultat").innerText = "";
         }
 
-        async function verifier() {
-            const cd = document.getElementById("cdInput").value;
-            const res = await fetch("http://localhost:5000/check", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cd })
-            });
-            const data = await res.json();
-            if (data.correct) {
+        function verifier() {
+            const cd = document.getElementById("cdInput").value.trim();
+            if (cd === currentSpell.cd) {
                 document.getElementById("resultat").innerText = "✅ Correct !";
             } else {
-                document.getElementById("resultat").innerText = "❌ Faux. Le CD correct était : " + data.answer;
+                document.getElementById("resultat").innerText = `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
             }
         }
 
@@ -41,7 +63,6 @@
             document.getElementById("cdInput").value = "";
         }
 
-        // Charger un sort au démarrage
         window.onload = chargerSort;
     </script>
 </body>
