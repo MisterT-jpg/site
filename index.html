@@ -1,191 +1,292 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Cooldown Champions LoL</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            margin: 0;
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            color: #eee;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
+  <meta charset="UTF-8" />
+  <title>Cooldown Champions LoL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-        h2#sort {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            text-align: center;
-            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-        }
+    body {
+      margin: 0;
+      font-family: 'Montserrat', sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
 
-        #cdInput {
-            padding: 10px 15px;
-            font-size: 1.2rem;
-            border-radius: 6px;
-            border: none;
-            width: 200px;
-            max-width: 80vw;
-            margin-bottom: 15px;
-            transition: box-shadow 0.3s ease;
-        }
+    h1 {
+      margin-top: 10px;
+      font-size: 1.8rem;
+    }
 
-        #cdInput:focus {
-            outline: none;
-            box-shadow: 0 0 8px #ffd700;
-        }
+    h2#sort {
+      font-size: 2rem;
+      margin: 10px 0 20px 0;
+      text-align: center;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+    }
 
-        button {
-            background: #ffd700;
-            border: none;
-            color: #222;
-            font-weight: 700;
-            padding: 10px 20px;
-            margin: 0 10px 15px 0;
-            border-radius: 6px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.15s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
+    #cdInput {
+      padding: 10px 15px;
+      font-size: 1.2rem;
+      border-radius: 6px;
+      border: none;
+      width: 200px;
+      max-width: 80vw;
+      margin-bottom: 15px;
+      transition: box-shadow 0.3s ease;
+    }
 
-        button:hover {
-            background: #ffea3c;
-            transform: scale(1.05);
-        }
+    #cdInput:focus {
+      outline: none;
+      box-shadow: 0 0 8px #ffd700;
+    }
 
-        button:active {
-            transform: scale(0.95);
-        }
+    button {
+      background: #ffd700;
+      border: none;
+      color: #222;
+      font-weight: 700;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.15s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
 
-        #resultat {
-            font-size: 1.5rem;
-            font-weight: 600;
-            min-height: 2em;
-            margin-top: 10px;
-            transition: color 0.3s ease;
-            text-align: center;
-        }
+    button:hover {
+      background: #ffea3c;
+      transform: scale(1.05);
+    }
 
-        @media (max-width: 480px) {
-            h2#sort {
-                font-size: 2rem;
-            }
-            #cdInput {
-                width: 100%;
-            }
-            button {
-                margin: 10px 5px 15px 5px;
-                width: 100%;
-            }
-        }
-    </style>
+    button:active {
+      transform: scale(0.95);
+    }
+
+    #resultat {
+      font-size: 1.5rem;
+      font-weight: 600;
+      min-height: 2em;
+      margin-top: 10px;
+      transition: color 0.3s ease;
+      text-align: center;
+    }
+
+    #historique {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .essai {
+      background: rgba(255, 255, 255, 0.1);
+      border-left: 5px solid;
+      padding: 10px 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .essai.correct {
+      border-color: #4CAF50;
+    }
+
+    .essai.incorrect {
+      border-color: #F44336;
+    }
+
+    .essai span {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.95rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 480px) {
+      h2#sort {
+        font-size: 1.5rem;
+      }
+
+      #cdInput {
+        width: 100%;
+      }
+
+      button {
+        width: 100%;
+        margin: 5px 0;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h2 id="sort">Chargement...</h2>
+  <h1 id="score">Score : 0 / 0</h1>
+  <h2 id="sort">Chargement...</h2>
 
-    <input type="text" id="cdInput" placeholder="Entrer le CD" />
-    <div>
-        <button onclick="verifier()">Vérifier</button>
-        <button onclick="reessayer()">Réessayer</button>
-    </div>
+  <input type="text" id="cdInput" placeholder="Entrer le CD" />
+  <div>
+    <button id="verifierBtn" onclick="verifier()">Vérifier</button>
+    <button onclick="cdSuivant()">CD suivant</button>
+    <button onclick="finSession()">Fin de session</button>
+    <button onclick="nouvelleSession()">Nouvelle session</button>
+  </div>
 
-    <p id="resultat"></p>
+  <p id="resultat"></p>
 
-    <script>
-        let allSpells = {};
-        let currentSpell = { name: "", cd: "" };
-        let timeoutId = null;
+  <div id="historique"></div>
 
-        async function chargerSort() {
-            if (Object.keys(allSpells).length === 0) {
-                const res = await fetch("data/championFull.json");
-                const json = await res.json();
-                const champions = json.data;
+  <script>
+    let allSpells = {};
+    let currentSpell = { name: "", cd: "" };
+    let dejaVerifie = false;
+    let score = 0;
+    let total = 0;
+    let historique = [];
+    let sessionActive = true;
 
-                for (const champKey in champions) {
-                    const champ = champions[champKey];
-                    const spells = champ.spells;
+    async function chargerSort() {
+      if (!sessionActive) return;
 
-                    if (spells.length === 4) {
-                        allSpells[champ.name + " Q"] = spells[0].cooldown[0];
-                        allSpells[champ.name + " W"] = spells[1].cooldown[0];
-                        allSpells[champ.name + " E"] = spells[2].cooldown[0];
-                        allSpells[champ.name + " R"] = spells[3].cooldown[0];
-                    }
-                }
-            }
+      if (Object.keys(allSpells).length === 0) {
+        const res = await fetch("data/championFull.json");
+        const json = await res.json();
+        const champions = json.data;
 
-            const keys = Object.keys(allSpells);
-            const randomKey = keys[Math.floor(Math.random() * keys.length)];
-            const cd = allSpells[randomKey];
+        for (const champKey in champions) {
+          const champ = champions[champKey];
+          const spells = champ.spells;
 
-            currentSpell = {
-                name: randomKey,
-                cd: cd.toString()
-            };
-
-            document.getElementById("sort").innerText = randomKey;
-            document.getElementById("resultat").innerText = "";
-            document.getElementById("cdInput").value = "";
-            document.getElementById("cdInput").focus();
+          if (spells.length === 4) {
+            allSpells[champ.name + " Q"] = spells[0].cooldown[0];
+            allSpells[champ.name + " W"] = spells[1].cooldown[0];
+            allSpells[champ.name + " E"] = spells[2].cooldown[0];
+            allSpells[champ.name + " R"] = spells[3].cooldown[0];
+          }
         }
+      }
 
-        function verifier() {
-            const cdInput = document.getElementById("cdInput");
-            const cd = cdInput.value.trim();
-            const resultatEl = document.getElementById("resultat");
+      const keys = Object.keys(allSpells);
+      const randomKey = keys[Math.floor(Math.random() * keys.length)];
+      const cd = allSpells[randomKey];
 
-            if (!/^\d+$/.test(cd)) {
-                resultatEl.innerText = "⚠️ Veuillez entrer un nombre valide";
-                resultatEl.style.color = "#FFA500"; // orange
-                return;
-            }
+      currentSpell = {
+        name: randomKey,
+        cd: cd.toString()
+      };
 
-            if (cd === currentSpell.cd) {
-                resultatEl.innerText = "✅ Correct !";
-                resultatEl.style.color = "#4CAF50"; // vert
-                setTimeout(() => {
-                    chargerSort();
-                }, 1500);
-            } else {
-                resultatEl.innerText = `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
-                resultatEl.style.color = "#F44336"; // rouge
-            }
+      dejaVerifie = false;
+      document.getElementById("verifierBtn").disabled = false;
+
+      document.getElementById("sort").innerText = randomKey;
+      document.getElementById("resultat").innerText = "";
+      document.getElementById("cdInput").value = "";
+      document.getElementById("cdInput").focus();
+    }
+
+    function verifier() {
+      if (!sessionActive || dejaVerifie) return;
+
+      const cdInput = document.getElementById("cdInput");
+      const cd = cdInput.value.trim();
+      const resultatEl = document.getElementById("resultat");
+
+      if (!/^\d+$/.test(cd)) {
+        resultatEl.innerText = "⚠️ Veuillez entrer un nombre valide";
+        resultatEl.style.color = "#FFA500";
+        return;
+      }
+
+      dejaVerifie = true;
+      document.getElementById("verifierBtn").disabled = true;
+
+      const estCorrect = cd === currentSpell.cd;
+      resultatEl.innerText = estCorrect ? "✅ Correct !" : `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
+      resultatEl.style.color = estCorrect ? "#4CAF50" : "#F44336";
+
+      total++;
+      if (estCorrect) score++;
+
+      // Ajouter à l’historique
+      historique.push({
+        sort: currentSpell.name,
+        reponse: cd,
+        correct: currentSpell.cd,
+        status: estCorrect
+      });
+
+      majScore();
+      ajouterCarteHistorique(historique[historique.length - 1]);
+    }
+
+    function ajouterCarteHistorique(essai) {
+      const container = document.getElementById("historique");
+      const card = document.createElement("div");
+      card.className = "essai " + (essai.status ? "correct" : "incorrect");
+      card.innerHTML = `
+        <strong>${essai.sort}</strong>
+        <span>Votre réponse : ${essai.reponse}</span>
+        <span>CD correct : ${essai.correct}</span>
+        <span>${essai.status ? "✅ Bonne réponse" : "❌ Mauvaise réponse"}</span>
+      `;
+      container.prepend(card);
+    }
+
+    function cdSuivant() {
+      chargerSort();
+    }
+
+    function majScore() {
+      document.getElementById("score").innerText = `Score : ${score} / ${total}`;
+    }
+
+    function finSession() {
+      sessionActive = false;
+      document.getElementById("sort").innerText = "Session terminée.";
+      document.getElementById("resultat").innerText = `🎯 Résultat final : ${score} bonnes réponses sur ${total} essais`;
+      document.getElementById("verifierBtn").disabled = true;
+      document.getElementById("cdInput").disabled = true;
+    }
+
+    function nouvelleSession() {
+      score = 0;
+      total = 0;
+      historique = [];
+      sessionActive = true;
+      document.getElementById("historique").innerHTML = "";
+      document.getElementById("cdInput").disabled = false;
+      majScore();
+      chargerSort();
+    }
+
+    window.onload = () => {
+      chargerSort();
+
+      const cdInput = document.getElementById("cdInput");
+      cdInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          verifier();
         }
+      });
 
-        function reessayer() {
-            chargerSort();
-        }
-
-        window.onload = () => {
-            chargerSort();
-
-            const cdInput = document.getElementById("cdInput");
-            cdInput.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    verifier();
-                }
-            });
-
-            cdInput.addEventListener("input", () => {
-                if (timeoutId) clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => {
-                    if (cdInput.value.trim().length > 0) {
-                        verifier();
-                    }
-                }, 500);
-            });
-        };
-    </script>
+      cdInput.addEventListener("input", () => {
+        document.getElementById("resultat").innerText = "";
+      });
+    };
+  </script>
 </body>
 </html>
