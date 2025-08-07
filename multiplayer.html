@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Cooldown Multiplayer</title>
   <style>
     body {
@@ -11,28 +11,73 @@
       padding: 30px;
       text-align: center;
     }
-    input, button {
+    input, button, select {
       font-size: 1rem;
       padding: 10px;
       margin: 10px;
       border-radius: 6px;
     }
-    #game { display: none; }
-    #newGameBtn { display: none; }
+    #game, #settingsContainer, #waitingHost {
+      display: none;
+    }
+    #startGameBtn {
+      display: none;
+    }
+    .player-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .player-card {
+      background-color: rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 8px;
+      min-width: 100px;
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 5px;
+    }
+    #feedback {
+      font-size: 0.9rem;
+      margin-top: 10px;
+      color: #90ee90;
+    }
   </style>
 </head>
 <body>
   <div id="welcome">
     <h1>Multiplayer Cooldown Trainer</h1>
-    <input id="nameInput" placeholder="Ton pseudo...">
+    <input id="nameInput" placeholder="Ton pseudo..." />
+    <select id="avatarSelect">
+      <option value="https://api.dicebear.com/7.x/thumbs/svg?seed=Fox">🦊 Avatar 1</option>
+      <option value="https://api.dicebear.com/7.x/thumbs/svg?seed=Cat">🐱 Avatar 2</option>
+      <option value="https://api.dicebear.com/7.x/thumbs/svg?seed=Robot">🤖 Avatar 3</option>
+      <option value="https://api.dicebear.com/7.x/thumbs/svg?seed=Dragon">🐉 Avatar 4</option>
+    </select>
     <button id="joinBtn">Rejoindre</button>
+  </div>
+
+  <div id="settingsContainer">
+    <h3>Paramétrer la partie</h3>
+    <label>Nombre de tours: <input type="number" id="nbTours" value="10" min="1" max="50"></label>
+    <label>Temps par tour (s): <input type="number" id="tempsTour" value="30" min="5" max="300"></label>
+    <br>
+    <button id="startGameBtn">🎮 Lancer la partie</button>
+  </div>
+
+  <div id="waitingHost">
+    <p>⏳ En attente que l'hôte lance la partie...</p>
   </div>
 
   <div id="game">
     <h2>Joueurs connectés :</h2>
-    <ul id="players"></ul>
-
-    <button id="startGameBtn">🚀 Lancer une partie</button>
+    <div class="player-grid" id="players"></div>
 
     <div id="sortDisplay" style="margin-top:30px;font-size:1.2rem;"></div>
     <div id="timer" style="font-size:1.5rem;margin:10px 0;"></div>
@@ -40,14 +85,13 @@
     <div id="answerSection" style="display:none">
       <input id="answerInput" placeholder="Cooldown en sec">
       <button id="submitBtn">Envoyer</button>
+      <div id="feedback"></div>
     </div>
-
-    <button id="newGameBtn">🔁 Nouvelle partie</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, onDisconnect, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, onDisconnect, update, get, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBjkxLbnCBZYvcyNRrGxwphT6nCyPOcGfI",
@@ -62,16 +106,79 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    const playersRef = ref(db, 'players');
+    const gameRef = ref(db, 'game');
+
     let playerId = null;
     let playerName = "";
+    let avatarUrl = "";
+    let isHost = false;
     let currentTurn = 0;
     let totalTurns = 10;
     let turnDuration = 30;
+    let currentSort = null;
     let timerInterval;
-    let allSpells = [];
+
+    document.getElementById("joinBtn").addEventListener("click", async () => {
+      playerName = document.getElementById("nameInput").value.trim();
+      avatarUrl = document.getElementById("avatarSelect").value;
+      if (!playerName) return alert("Pseudo requis !");
+
+      const newPlayerRef = push(playersRef);
+      playerId = newPlayerRef.key;
+
+      await set(newPlayerRef, {
+        name: playerName,
+        avatar: avatarUrl,
+        score: 0,
+        lastAnswer: null
+      });
+
+      onDisconnect(newPlayerRef).remove();
+      document.getElementById("welcome").style.display = "none";
+      document.getElementById("game").style.display = "block";
+
+      const snapshot = await get(playersRef);
+      const players = snapshot.val();
+      if (!players || Object.keys(players).length === 1) {
+        await set(gameRef, {});
+      }
+
+      const gameSnap = await get(gameRef);
+      const gameData = gameSnap.val();
+
+      if (!gameData || !gameData.host) {
+        isHost = true;
+        await update(gameRef, { host: playerId });
+        document.getElementById("settingsContainer").style.display = "block";
+        document.getElementById("startGameBtn").style.display = "inline-block"; // ✅ Affiche le bouton
+      } else {
+        document.getElementById("waitingHost").style.display = "block";
+      }
+    });
+
+    document.getElementById("startGameBtn").addEventListener("click", async () => {
+      totalTurns = parseInt(document.getElementById("nbTours").value);
+      turnDuration = parseInt(document.getElementById("tempsTour").value);
+      const spells = await fetchSpells();
+      await set(gameRef, {
+        host: playerId,
+        settings: { totalTurns, turnDuration },
+        turn: 1,
+        sort: getRandomSpell(spells),
+        timestamp: Date.now()
+      });
+      document.getElementById("settingsContainer").style.display = "none";
+    });
+
+    onValue(gameRef, (snap) => {
+      const game = snap.val();
+      if (!game || !game.settings) return;
+      totalTurns = game.settings.totalTurns;
+      turnDuration = game.settings.turnDuration;
+    });
 
     async function fetchSpells() {
-      if (allSpells.length > 0) return allSpells;
       const res = await fetch("data/championFull.json");
       const data = await res.json();
       const spells = [];
@@ -86,64 +193,11 @@
           });
         });
       }
-      allSpells = spells;
       return spells;
     }
 
-    const gameRef = ref(db, 'game');
-    const playersRef = ref(db, 'players');
-
-    document.getElementById("joinBtn").addEventListener("click", async () => {
-      playerName = document.getElementById("nameInput").value.trim();
-      if (!playerName) return alert("Entre un pseudo valide");
-
-      const newPlayerRef = push(playersRef);
-      playerId = newPlayerRef.key;
-
-      await set(newPlayerRef, {
-        name: playerName,
-        score: 0,
-        lastAnswer: null
-      });
-
-      onDisconnect(newPlayerRef).remove();
-
-      document.getElementById("welcome").style.display = "none";
-      document.getElementById("game").style.display = "block";
-    });
-
-    document.getElementById("startGameBtn").addEventListener("click", async () => {
-      const spells = await fetchSpells();
-      await set(gameRef, {
-        turn: 1,
-        sort: getRandomSpell(spells),
-        timestamp: Date.now()
-      });
-      document.getElementById("startGameBtn").style.display = "none";
-    });
-
-    document.getElementById("newGameBtn").addEventListener("click", async () => {
-      await remove(gameRef);
-      const snapshot = await fetch(`${firebaseConfig.databaseURL}/players.json`);
-      const players = await snapshot.json();
-      for (let id in players) {
-        await update(ref(db, `players/${id}`), { score: 0 });
-      }
-      document.getElementById("newGameBtn").style.display = "none";
-      document.getElementById("startGameBtn").style.display = "inline-block";
-      document.getElementById("sortDisplay").textContent = "";
-      document.getElementById("timer").textContent = "";
-      document.getElementById("answerSection").style.display = "none";
-    });
-
     function getRandomSpell(spells) {
-      const s = spells[Math.floor(Math.random() * spells.length)];
-      return {
-        champ: s.champ,
-        key: s.key,
-        cd: s.cd,
-        name: s.name
-      };
+      return spells[Math.floor(Math.random() * spells.length)];
     }
 
     const playersList = document.getElementById("players");
@@ -152,24 +206,28 @@
       playersList.innerHTML = "";
       for (let id in data) {
         const p = data[id];
-        const li = document.createElement("li");
-        li.textContent = `${p.name} - Score : ${p.score}`;
-        playersList.appendChild(li);
+        const card = document.createElement("div");
+        card.className = "player-card";
+        card.innerHTML = `
+          <img src="${p.avatar}" class="avatar">
+          <strong>${p.name}</strong><br>Score : ${p.score}
+        `;
+        playersList.appendChild(card);
       }
     });
 
     onValue(gameRef, async (snap) => {
       const game = snap.val();
-      if (!game) return;
+      if (!game || !game.sort) return;
       currentTurn = game.turn;
       if (currentTurn > totalTurns) return finDePartie();
 
-      const sortDisplay = document.getElementById("sortDisplay");
-      sortDisplay.innerHTML = `<strong>${game.sort.champ} ${game.sort.key}</strong> - ${game.sort.name}`;
-
+      currentSort = game.sort;
+      document.getElementById("sortDisplay").innerHTML = `<strong>${currentSort.champ} ${currentSort.key}</strong> - ${currentSort.name}`;
       document.getElementById("answerSection").style.display = "block";
       document.getElementById("timer").textContent = `${turnDuration}s`;
       document.getElementById("answerInput").value = "";
+      document.getElementById("feedback").textContent = "";
 
       clearInterval(timerInterval);
       let secondsLeft = turnDuration;
@@ -186,6 +244,7 @@
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const val = document.getElementById("answerInput").value;
       await update(ref(db, `players/${playerId}`), { lastAnswer: val });
+      document.getElementById("feedback").textContent = "✅ Réponse enregistrée";
     });
 
     async function validerReponse(game) {
@@ -197,22 +256,24 @@
           const bonne = parseInt(game.sort.cd);
           if (!isNaN(rep)) {
             const ecart = Math.abs(rep - bonne);
-            const gain = Math.max(0, 10 - ecart);
+            const score = Math.max(0, 5000 - (ecart * 500));
             await update(ref(db, `players/${id}`), {
-              score: p.score + gain,
+              score: score,
               lastAnswer: null
             });
           }
         }
+
         if (currentTurn < totalTurns) {
           const spells = await fetchSpells();
           await set(gameRef, {
+            ...game,
             turn: currentTurn + 1,
             sort: getRandomSpell(spells),
             timestamp: Date.now()
           });
         } else {
-          await set(gameRef, { turn: totalTurns + 1 });
+          await update(gameRef, { turn: totalTurns + 1 });
         }
       }, { onlyOnce: true });
     }
@@ -220,7 +281,6 @@
     function finDePartie() {
       document.getElementById("sortDisplay").innerHTML = "🎉 Fin de la partie !";
       document.getElementById("answerSection").style.display = "none";
-      document.getElementById("newGameBtn").style.display = "inline-block";
     }
   </script>
 </body>
