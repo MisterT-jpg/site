@@ -76,7 +76,6 @@
     <label>Temps par tour (s):
       <input type="number" id="tempsTour" value="30" min="5" max="300">
     </label>
-    <!-- Pause FIXE : plus d'input -->
     <div class="muted">Pause entre tours : 10s</div>
     <br>
     <button id="startGameBtn">🎮 Lancer la partie</button>
@@ -364,6 +363,16 @@
       if (!game || !game.settings) return;
       renderGame(game);
       setupTimer(game);
+
+      // 👉 Forcer l'affichage between pour TOUS les clients dès le changement d'état
+      if (game.phase === 'between') {
+        setTimeout(async () => {
+          const snapPlayers = await get(playersRef);
+          const playersObj = snapPlayers.val() || {};
+          renderLeaderboardFrom(playersObj);
+          renderBetweenInfo(playersObj);
+        }, 100); // laisse le temps au host d'écrire lastDelta/lastAnswer*
+      }
     });
 
     function renderGame(game) {
@@ -451,7 +460,7 @@
 
       await update(stateRef, { phase: "between", tsStart: serverTimestamp() });
 
-      // ➕ Rendu immédiat des infos comparatives
+      // ➕ Rendu immédiat des infos comparatives (filet de sécurité supplémentaire)
       setTimeout(async () => {
         const snapshot = await get(playersRef);
         const playersObj = snapshot.val() || {};
@@ -461,7 +470,7 @@
 
       try { await remove(ref(db, `rooms/${ROOM_ID}/answers/${turn}`)); } catch(_) {}
 
-      // photo des rangs
+      // photo des rangs pour l'animation
       setTimeout(async () => {
         const p = (await get(playersRef)).val() || {};
         LAST_RANKS = computeRanksMap(p);
@@ -597,7 +606,13 @@
           await Promise.all(ops);
         }
 
-        await remove(answersRef);          // nécessite règles maj (voir plus bas)
+        // 🔧 Nettoyage compat rules (supprime chaque tour au lieu de answers/ racine)
+        const turnsSnap = await get(answersRef);
+        const turns = turnsSnap.val() || {};
+        await Promise.all(
+          Object.keys(turns).map(t => remove(ref(db, `rooms/${ROOM_ID}/answers/${t}`)))
+        );
+
         await clearPlayersDeltas();
 
         const spells = await loadSpells();
