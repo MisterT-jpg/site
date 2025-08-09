@@ -104,12 +104,13 @@
       padding: 10px 12px;
       border-radius: 12px;
       animation: fadeIn 0.25s ease;
+      word-break: break-word;
     }
     .correct { border-color: var(--green); }
     .incorrect { border-color: var(--red); }
 
     .essai .name { font-weight:700; display:block; margin-bottom:6px; }
-    .essai .row { display:flex; justify-content:space-between; font-size:.95rem; }
+    .essai .row { display:flex; justify-content:space-between; font-size:.95rem; gap:10px; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
@@ -146,6 +147,18 @@
     @media (prefers-reduced-motion: reduce){
       * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
     }
+
+    /* Bloc mode ciblé */
+    #targetPanel{
+      display:none;
+      background-color: rgba(255,255,255,0.08);
+      border-radius:12px;
+      padding:10px;
+      margin-top:8px;
+      max-width:900px;
+      width:100%;
+    }
+    #targetPanel .row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; }
   </style>
 </head>
 <body>
@@ -154,7 +167,7 @@
   <audio id="beepSound" preload="auto" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_195eaf4bfa.mp3?filename=beep-6-96275.mp3"></audio>
 
   <div id="topBar" aria-label="Barre d'actions">
-    <button id="helpBtn" type="button" aria-expanded="false">🛈 Aide</button>
+    <button id="helpBtn" type="button" aria-expanded="false" aria-controls="helpSection">🛈 Aide</button>
     <div>
       <button id="multiplayerBtn" type="button" title="Ouvrir le mode multijoueur">🎮 Multiplayer</button>
     </div>
@@ -168,7 +181,31 @@
       <option value="normal">Normal</option>
       <option value="chrono">Chrono (60s)</option>
       <option value="hardcore">Hardcore</option>
+      <option value="target">Ciblé (niveau précis)</option>
     </select>
+
+    <!-- Panneau de sélection pour le mode ciblé -->
+    <div id="targetPanel" aria-live="polite">
+      <div class="row">
+        <label for="targetChampion">Champion</label>
+        <select id="targetChampion">
+          <option value="">-- Sélectionnez --</option>
+        </select>
+
+        <label for="targetSpell">Sort</label>
+        <select id="targetSpell" disabled>
+          <option value="">-- Q / W / E / R --</option>
+        </select>
+
+        <label for="targetLevel">Niveau</label>
+        <select id="targetLevel" disabled>
+          <option value="">-- 1..5 --</option>
+        </select>
+      </div>
+      <p style="text-align:center; margin:6px 0 0; color:var(--muted); font-size:.95rem">
+        Choisis un <strong>champion</strong>, puis le <strong>sort</strong> et le <strong>niveau</strong> à interroger.
+      </p>
+    </div>
 
     <button id="startBtn" type="button">Démarrer</button>
   </div>
@@ -176,8 +213,18 @@
   <h2 id="sort" aria-live="polite">Prêt ?</h2>
 
   <div class="help-row">
-    <input type="text" id="cdInput" inputmode="numeric" autocomplete="off" placeholder="Entrer le CD" aria-label="Saisir le cooldown en secondes" disabled />
+    <input
+      type="text"
+      id="cdInput"
+      inputmode="decimal"
+      pattern="[0-9]+([.,][0-9]+)?"
+      autocomplete="off"
+      placeholder="Entrer le CD"
+      aria-label="Saisir le cooldown (ex: 7 ou 0,5)"
+      disabled
+    />
     <button id="verifyBtn" type="button" disabled>Vérifier</button>
+    <button id="idkBtn" type="button" disabled>Je ne sais pas</button>
     <button id="nextBtn" type="button" disabled>CD suivant</button>
     <button id="endBtn" type="button" disabled>Fin de session</button>
     <button id="resetBtn" type="button" style="display:none">Nouvelle session</button>
@@ -207,9 +254,9 @@
   // ----- State -----
   const STATE = {
     mode: 'normal',
-    spells: [],           // [{name, cd}]
+    spells: [],           // [{name, cds:number[], display}]
     currentIndex: -1,     // index dans STATE.spells
-    current: null,        // {name, cd}
+    current: null,        // {name, cds, display}
     verified: false,
     score: 0,
     total: 0,
@@ -217,6 +264,11 @@
     timerId: null,
     timeLeft: 60,
     championsCache: null, // objet brut du JSON (data)
+    dd_version: null,     // version Data Dragon pour les images
+    recentIndices: [],    // anti-répétition des 5 derniers
+    recentSize: 5,
+    // sélection mode ciblé
+    target: { championName: '', spellIndex: null, level: null }, // spellIndex: 0..3
   };
 
   // ----- DOM helpers -----
@@ -229,6 +281,7 @@
     endBtn: $('#endBtn'),
     resetBtn: $('#resetBtn'),
     verifyBtn: $('#verifyBtn'),
+    idkBtn: $('#idkBtn'),
     mode: $('#mode'),
     sort: $('#sort'),
     cdInput: $('#cdInput'),
@@ -242,18 +295,37 @@
     cooldownList: $('#cooldownList'),
     beep: $('#beepSound'),
     fail: $('#failSound'),
+    targetPanel: $('#targetPanel'),
+    targetChampion: $('#targetChampion'),
+    targetSpell: $('#targetSpell'),
+    targetLevel: $('#targetLevel'),
   };
 
-  // ----- Data -----
+  // ----- Utils -----
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  const LABELS = ['Q','W','E','R'];
+
+  // ----- Data (Data Dragon FR, version dynamique) -----
   async function fetchData(){
     try{
-      const res = await fetch('data/championFull.json', { cache: 'no-store' });
+      // 1) dernière version
+      const vr = await fetch('https://ddragon.leagueoflegends.com/api/versions.json', {cache:'no-store'});
+      if(!vr.ok) throw new Error('HTTP '+vr.status);
+      const versions = await vr.json();
+      const latest = versions[0];
+
+      // 2) championFull fr_FR
+      const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/fr_FR/championFull.json`, { cache: 'no-store' });
       if(!res.ok) throw new Error('HTTP '+res.status);
       const json = await res.json();
+
+      STATE.dd_version = latest;
       return json.data;
     }catch(err){
       console.error('Erreur de chargement des données', err);
-      els.resultat.textContent = "❗ Impossible de charger les données. Vérifiez le chemin 'data/championFull.json'.";
+      els.resultat.textContent = "❗ Impossible de charger les données Data Dragon.";
       els.resultat.style.color = 'var(--red)';
       throw err;
     }
@@ -265,23 +337,140 @@
     return STATE.championsCache;
   }
 
+  function normalizeCds(s){
+    let cds = Array.isArray(s.cooldown) ? s.cooldown : (s.cooldown != null ? [s.cooldown] : []);
+    cds = cds
+      .map(x => Number(String(x).replace(',', '.')))
+      .filter(x => Number.isFinite(x));
+    return cds;
+  }
+
   async function buildSpellsPool(){
     const champions = await ensureChampionsCache();
     const pool = [];
+
     for(const key in champions){
       const champ = champions[key];
-      const spells = champ.spells || [];
-      const labels = ['Q','W','E','R'];
-      // certaines fiches peuvent ne pas avoir 4 sorts (skins/alt forms)
+      const spells = champ?.spells || [];
       for(let i=0;i<Math.min(4, spells.length);i++){
         const s = spells[i];
-        const cd = Array.isArray(s.cooldown) ? s.cooldown[0] : s.cooldown; // fallback
-        if(cd != null){
-          pool.push({ name: `${champ.name} ${labels[i]}`, cd: String(cd) });
+        const cds = normalizeCds(s);
+        if(cds.length){
+          const display = cds.join(' / ');
+          pool.push({
+            name: `${champ.name} ${LABELS[i]}`,
+            cds,
+            display,
+          });
         }
       }
     }
     STATE.spells = pool;
+  }
+
+  // ----- Mode ciblé (niveau précis) -----
+  async function initTargetPanel(){
+    const champions = await ensureChampionsCache();
+    // remplir champions
+    const list = Object.values(champions).sort((a,b)=> a.name.localeCompare(b.name));
+    els.targetChampion.innerHTML = '<option value="">-- Sélectionnez --</option>';
+    for(const c of list){
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      els.targetChampion.appendChild(opt);
+    }
+    els.targetSpell.innerHTML = '<option value="">-- Q / W / E / R --</option>';
+    els.targetSpell.disabled = true;
+    els.targetLevel.innerHTML = '<option value="">-- 1..5 --</option>';
+    els.targetLevel.disabled = true;
+  }
+
+  async function onTargetChampionChange(){
+    const name = els.targetChampion.value;
+    STATE.target.championName = name || '';
+    els.targetSpell.innerHTML = '<option value="">-- Q / W / E / R --</option>';
+    els.targetLevel.innerHTML = '<option value="">-- 1..5 --</option>';
+    els.targetSpell.disabled = true;
+    els.targetLevel.disabled = true;
+
+    if(!name) return;
+
+    const champions = await ensureChampionsCache();
+    const champ = Object.values(champions).find(c => c.name === name);
+    if(!champ) return;
+
+    const spells = champ.spells || [];
+    for(let i=0;i<Math.min(4, spells.length); i++){
+      const cds = normalizeCds(spells[i]);
+      if(cds.length){
+        const opt = document.createElement('option');
+        opt.value = String(i); // 0..3
+        opt.textContent = LABELS[i] + (spells[i]?.name ? ` — ${spells[i].name}` : '');
+        els.targetSpell.appendChild(opt);
+      }
+    }
+    els.targetSpell.disabled = false;
+  }
+
+  async function onTargetSpellChange(){
+    const idx = els.targetSpell.value ? Number(els.targetSpell.value) : null;
+    STATE.target.spellIndex = Number.isFinite(idx) ? idx : null;
+    els.targetLevel.innerHTML = '<option value="">-- 1..5 --</option>';
+    els.targetLevel.disabled = true;
+
+    if(STATE.target.championName == '' || idx == null) return;
+
+    const champions = await ensureChampionsCache();
+    const champ = Object.values(champions).find(c => c.name === STATE.target.championName);
+    if(!champ) return;
+
+    const s = (champ.spells || [])[idx];
+    if(!s) return;
+
+    const cds = normalizeCds(s);
+    if(!cds.length) return;
+
+    const maxrank = Number.isFinite(s.maxrank) ? s.maxrank : cds.length || 5;
+    for(let lvl=1; lvl<=maxrank; lvl++){
+      const opt = document.createElement('option');
+      opt.value = String(lvl);
+      opt.textContent = `Niveau ${lvl}`;
+      els.targetLevel.appendChild(opt);
+    }
+    els.targetLevel.disabled = false;
+  }
+
+  function onTargetLevelChange(){
+    const lvl = els.targetLevel.value ? Number(els.targetLevel.value) : null;
+    STATE.target.level = Number.isFinite(lvl) ? lvl : null;
+  }
+
+  async function buildTargetSingle(){
+    // construit STATE.spells avec un seul item: le CD au niveau choisi
+    const { championName, spellIndex, level } = STATE.target;
+    if(!championName || spellIndex == null || level == null){
+      throw new Error('Sélection incomplète (champion/sort/niveau).');
+    }
+    const champions = await ensureChampionsCache();
+    const champ = Object.values(champions).find(c => c.name === championName);
+    if(!champ) throw new Error('Champion introuvable');
+    const s = (champ.spells || [])[spellIndex];
+    if(!s) throw new Error('Sort introuvable');
+
+    const cds = normalizeCds(s);
+    if(!cds.length) throw new Error('Aucun cooldown disponible pour ce sort');
+    const maxrank = Number.isFinite(s.maxrank) ? s.maxrank : cds.length;
+    const lvl = Math.max(1, Math.min(level, maxrank));
+
+    const cdAt = cds[Math.min(lvl-1, cds.length-1)]; // si array plus court que maxrank
+    const display = String(cdAt);
+
+    STATE.spells = [{
+      name: `${champ.name} ${LABELS[spellIndex]} (Niveau ${lvl})`,
+      cds: [cdAt],
+      display
+    }];
   }
 
   // ----- Game flow -----
@@ -291,16 +480,28 @@
     STATE.active = true;
     STATE.score = 0; STATE.total = 0; STATE.verified = false;
     STATE.currentIndex = -1; STATE.current = null;
+    STATE.recentIndices = [];
     els.resultat.textContent = '';
     els.historique.innerHTML = '';
     els.cdInput.value = '';
 
     toggleControlsForSession(true);
 
-    // précharge données & pool
-    if(STATE.spells.length === 0){
-      await buildSpellsPool();
+    // précharge données & pool selon mode
+    if(STATE.mode === 'target'){
+      try{
+        await buildTargetSingle();
+      }catch(err){
+        setResultMsg('⚠️ ' + (err?.message || 'Sélection invalide'), '#FFA500');
+        endSession();
+        return;
+      }
+    } else {
+      if(STATE.spells.length === 0){
+        await buildSpellsPool();
+      }
     }
+
     nextSpell();
     if(STATE.mode === 'chrono') startTimer(); else stopTimer(true);
   }
@@ -315,10 +516,27 @@
   function toggleControlsForSession(running){
     els.cdInput.disabled = !running;
     els.verifyBtn.disabled = !running;
+    els.idkBtn.disabled = !running;
     els.nextBtn.disabled = !running;
     els.endBtn.disabled = !running;
     els.resetBtn.style.display = running ? 'none' : 'inline-block';
     if(running) els.cdInput.focus();
+  }
+
+  function pickNextIndex(){
+    if(!STATE.spells.length) return -1;
+    if(STATE.mode === 'target') return 0; // un seul item
+    let tries = 0;
+    let idx;
+    do {
+      idx = Math.floor(Math.random()*STATE.spells.length);
+      tries++;
+      if(tries > 50) break; // sécurité
+    } while(STATE.spells.length>STATE.recentSize && STATE.recentIndices.includes(idx));
+    // mettre à jour la queue
+    STATE.recentIndices.unshift(idx);
+    if(STATE.recentIndices.length > STATE.recentSize) STATE.recentIndices.pop();
+    return idx;
   }
 
   function nextSpell(){
@@ -327,9 +545,7 @@
       els.resultat.textContent = 'Aucun sort disponible.';
       return;
     }
-    // éviter la répétition immédiate
-    let idx;
-    do { idx = Math.floor(Math.random()*STATE.spells.length); } while(STATE.spells.length>1 && idx === STATE.currentIndex);
+    const idx = pickNextIndex();
     STATE.currentIndex = idx;
     STATE.current = STATE.spells[idx];
     STATE.verified = false;
@@ -338,34 +554,61 @@
     els.resultat.textContent = '';
     els.cdInput.value = '';
     els.verifyBtn.disabled = false;
+    els.idkBtn.disabled = false;
     els.cdInput.focus();
   }
 
-  function verify(){
+  function verifyCommon(isPass=false){
     if(!STATE.active || STATE.verified || !STATE.current) return;
-    const raw = els.cdInput.value.trim();
-    if(!/^\d+$/.test(raw)){
-      setResultMsg('⚠️ Veuillez entrer un nombre valide', '#FFA500');
-      return;
+
+    let ok = false;
+    let raw = '';
+
+    if(isPass){
+      raw = '—';
+    } else {
+      raw = els.cdInput.value.trim().replace(',', '.');
+      const val = Number(raw);
+
+      if(!Number.isFinite(val)){
+        setResultMsg('⚠️ Veuillez entrer un nombre (ex: 7 ou 0.5)', '#FFA500');
+        return;
+      }
+
+      // tolérance légère sur les décimales
+      const EPS = 1e-3;
+      ok = STATE.current.cds.some(n => Math.abs(n - val) < EPS);
     }
+
     STATE.verified = true;
     els.verifyBtn.disabled = true;
+    els.idkBtn.disabled = true;
 
-    const ok = raw === STATE.current.cd; // comparaison chaîne (données normalisées)
-    setResultMsg(ok ? '✅ Correct !' : `❌ Faux. Le CD correct était : ${STATE.current.cd}`, ok ? 'var(--green)' : 'var(--red)');
+    setResultMsg(
+      ok ? '✅ Correct !' : `❌ Faux. Le CD correct était : ${STATE.current.display}`,
+      ok ? 'var(--green)' : 'var(--red)'
+    );
 
     STATE.total++;
     if(ok) STATE.score++;
     updateScore();
-    pushHistory({ sort: STATE.current.name, reponse: raw, correct: STATE.current.cd, status: ok });
+
+    pushHistory({
+      sort: STATE.current.name,
+      reponse: raw || els.cdInput.value.trim(),
+      correct: STATE.current.display,
+      status: ok
+    });
 
     if(!ok && STATE.mode === 'hardcore'){
-      // secousse + son puis fin
-      if(els.fail) els.fail.currentTime = 0, els.fail.play().catch(()=>{});
+      if(els.fail){ try{ els.fail.currentTime = 0; els.fail.play(); }catch(_){} }
       document.body.style.animation = 'shake 0.6s';
       setTimeout(()=>{ document.body.style.animation = ''; endSession(true); }, 600);
     }
   }
+
+  function verify(){ verifyCommon(false); }
+  function iDontKnow(){ verifyCommon(true); }
 
   function pushHistory(e){
     const c = document.createElement('div');
@@ -374,10 +617,11 @@
     const name = document.createElement('span');
     name.className = 'name';
     name.textContent = e.sort;
+
     const row1 = document.createElement('div'); row1.className = 'row';
-    row1.innerHTML = `<span>Votre réponse</span><span>${e.reponse}</span>`;
+    row1.innerHTML = `<span>Votre réponse</span><span>${esc(e.reponse)}</span>`;
     const row2 = document.createElement('div'); row2.className = 'row';
-    row2.innerHTML = `<span>CD correct</span><span>${e.correct}</span>`;
+    row2.innerHTML = `<span>CD correct</span><span>${esc(e.correct)}</span>`;
     const row3 = document.createElement('div'); row3.className = 'row';
     row3.innerHTML = `<span>Status</span><span>${e.status ? '✅' : '❌'}</span>`;
 
@@ -421,7 +665,10 @@
     const isOpen = els.helpSection.style.display === 'block';
     els.helpSection.style.display = isOpen ? 'none' : 'block';
     els.helpBtn.setAttribute('aria-expanded', String(!isOpen));
-    if(!isOpen){ await populateChampionSelect(); }
+    if(!isOpen){
+      await populateChampionSelect();
+      els.championSearch.focus();
+    }
   }
 
   async function populateChampionSelect(){
@@ -450,26 +697,25 @@
     const champions = await ensureChampionsCache();
     const champ = Object.values(champions).find(c => c.name === name);
     if(!champ){ els.cooldownList.textContent = 'Champion introuvable'; return; }
-    const labels = ['Q','W','E','R'];
-    const blocks = champ.spells.map((s,i)=>{
-      const cd = Array.isArray(s.cooldown) ? s.cooldown[0] : s.cooldown;
-      const img = s?.image?.full ? `https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${s.image.full}` : '';
+    const blocks = (champ.spells || []).map((s,i)=>{
+      const cdText = Array.isArray(s.cooldown) ? s.cooldown.join(' / ') : (s.cooldown ?? '-');
+      const img = s?.image?.full ? `https://ddragon.leagueoflegends.com/cdn/${STATE.dd_version}/img/spell/${s.image.full}` : '';
       const range = s.rangeBurn ?? '-';
-      const dmg = Array.isArray(s.effectBurn) ? (s.effectBurn[1] || '-') : '-';
+      const dmg = Array.isArray(s.effectBurn) ? (s.effectBurn[1] || '-') : (s.effectBurn ?? '-');
       const cost = s.costBurn ?? '-';
       return `
         <div style="margin:6px 0; display:flex; align-items:center; gap:10px;">
-          ${img ? `<img src="${img}" alt="${s.name}" width="32" height="32" style="border-radius:6px;">` : ''}
+          ${img ? `<img src="${img}" alt="${esc(s.name||'Sort')}" width="32" height="32" style="border-radius:6px;">` : ''}
           <div>
-            <div><strong>${labels[i] || '?'}:</strong> ${cd ?? '-'} sec</div>
-            <div style="font-size:.9rem; color: var(--muted);"><strong>${s.name}</strong></div>
+            <div><strong>${LABELS[i] || '?' }:</strong> ${esc(cdText)} sec</div>
+            <div style="font-size:.9rem; color: var(--muted);"><strong>${esc(s.name||'')}</strong></div>
             <div style="font-size:.8rem; color: var(--muted-2);">
-              🌀 Portée : ${range} | 💥 Dégâts : ${dmg} | 🔋 Mana : ${cost}
+              🌀 Portée : ${esc(range)} | 💥 Dégâts : ${esc(dmg)} | 🔋 Mana : ${esc(cost)}
             </div>
           </div>
         </div>`;
     });
-    els.cooldownList.innerHTML = `<strong>${champ.name}</strong><br>` + blocks.join('');
+    els.cooldownList.innerHTML = `<strong>${esc(champ.name)}</strong><br>` + blocks.join('');
   }
 
   // ----- Background gradient animation -----
@@ -485,17 +731,35 @@
   }
 
   // ----- Events -----
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     els.helpBtn.addEventListener('click', toggleHelp);
     els.multiplayerBtn.addEventListener('click', ()=>{ window.location.href = 'multiplayer.html'; });
+
+    els.mode.addEventListener('change', async ()=>{
+      STATE.mode = els.mode.value;
+      const isTarget = STATE.mode === 'target';
+      els.targetPanel.style.display = isTarget ? 'block' : 'none';
+      if(isTarget){
+        await initTargetPanel();
+      }
+    });
+
+    els.targetChampion.addEventListener('change', onTargetChampionChange);
+    els.targetSpell.addEventListener('change', onTargetSpellChange);
+    els.targetLevel.addEventListener('change', onTargetLevelChange);
+
     els.startBtn.addEventListener('click', startSession);
     els.nextBtn.addEventListener('click', nextSpell);
     els.endBtn.addEventListener('click', ()=> endSession());
     els.resetBtn.addEventListener('click', startSession);
     els.verifyBtn.addEventListener('click', verify);
+    els.idkBtn.addEventListener('click', iDontKnow);
 
     els.cdInput.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter') verify();
+      if(e.key === 'Enter'){
+        if(!STATE.verified) verify();
+        else nextSpell();
+      }
       if(e.key === 'Enter' && e.ctrlKey) nextSpell();
     });
     els.cdInput.addEventListener('input', ()=> setResultMsg(''));
