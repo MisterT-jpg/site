@@ -2,93 +2,133 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Cooldown Trainer - LoL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cooldown Trainer - LoL (amélioré)</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
   <style>
+    :root{
+      --bg1: #1e3c72; /* fallback gradient start */
+      --bg2: #2a5298; /* fallback gradient end   */
+      --accent: #ffd700;
+      --accent-700: #ffea3c;
+      --green: #4CAF50;
+      --red: #F44336;
+      --text: #eee;
+      --muted: #ccc;
+      --muted-2: #aaa;
+    }
+
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: 'Montserrat', sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: #eee;
+      font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      color: var(--text);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
       padding: 20px;
     }
+
     h1, h2, h3 { margin: 10px 0; text-align: center; }
+
+    #topBar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 8px 12px;
+      max-width: 900px;
+    }
+
     #modeSelector {
       margin-bottom: 20px;
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
+      max-width: 900px;
     }
-    #topBar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      padding: 0 20px;
-    }
+
     select, input[type="text"], label {
       padding: 10px;
       font-size: 1rem;
-      border-radius: 6px;
+      border-radius: 8px;
       border: none;
-      margin: 5px;
+      margin: 6px;
     }
+
+    input[type="text"] {
+      width: clamp(180px, 40vw, 260px);
+      text-align: center;
+    }
+
     button {
-      background: #ffd700;
+      background: var(--accent);
       border: none;
       color: #222;
       font-weight: 700;
-      padding: 10px 20px;
+      padding: 10px 16px;
       margin: 5px;
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background-color 0.3s ease, transform 0.15s ease;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.25s ease, transform 0.1s ease, box-shadow .25s ease;
+      box-shadow: 0 6px 14px rgba(0,0,0,.25);
     }
-    button:hover { background: #ffea3c; transform: scale(1.05); }
-    button:active { transform: scale(0.95); }
+    button:hover { background: var(--accent-700); transform: translateY(-1px); }
+    button:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+    button[disabled]{ opacity:.5; cursor:not-allowed; box-shadow:none; transform:none; }
+
     #resultat, #score, #timerDisplay {
       font-size: 1.2rem;
       font-weight: 600;
       min-height: 2em;
       text-align: center;
     }
+
     #historique {
-      margin-top: 30px;
-      max-width: 600px;
+      margin-top: 24px;
+      max-width: 720px;
       width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
     }
+
     .essai {
       background: rgba(255, 255, 255, 0.1);
       border-left: 5px solid;
-      padding: 10px;
-      border-radius: 6px;
-      animation: fadeIn 0.3s ease;
+      padding: 10px 12px;
+      border-radius: 12px;
+      animation: fadeIn 0.25s ease;
     }
-    .correct { border-color: #4CAF50; }
-    .incorrect { border-color: #F44336; }
+    .correct { border-color: var(--green); }
+    .incorrect { border-color: var(--red); }
+
+    .essai .name { font-weight:700; display:block; margin-bottom:6px; }
+    .essai .row { display:flex; justify-content:space-between; font-size:.95rem; }
+
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
     #helpSection {
-      margin-top: 20px;
-      padding: 15px;
+      margin-top: 18px;
+      padding: 14px;
       background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      max-width: 500px;
+      border-radius: 12px;
+      max-width: 720px;
+      width: 100%;
       display: none;
     }
-      @keyframes shake {
+
+    .help-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+
+    @keyframes shake {
       0% { transform: translate(1px, 1px) rotate(0deg); }
       10% { transform: translate(-1px, -2px) rotate(-1deg); }
       20% { transform: translate(-3px, 0px) rotate(1deg); }
@@ -101,278 +141,367 @@
       90% { transform: translate(1px, 2px) rotate(0deg); }
       100% { transform: translate(1px, -2px) rotate(-1deg); }
     }
-</style>
+
+    /* Reduce motion preference */
+    @media (prefers-reduced-motion: reduce){
+      * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    }
+  </style>
 </head>
 <body>
-  <audio id="failSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7c00edc9b7.mp3?filename=game-over-arcade-6435.mp3"></audio>
-  <audio id="beepSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_195eaf4bfa.mp3?filename=beep-6-96275.mp3"></audio>
-  <div id="topBar">
-    <button onclick="toggleHelp()">🛈 Aide</button>
-    <button onclick="window.location.href='multiplayer.html'">🎮 Multiplayer</button>
+  <!-- Sounds -->
+  <audio id="failSound" preload="auto" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7c00edc9b7.mp3?filename=game-over-arcade-6435.mp3"></audio>
+  <audio id="beepSound" preload="auto" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_195eaf4bfa.mp3?filename=beep-6-96275.mp3"></audio>
+
+  <div id="topBar" aria-label="Barre d'actions">
+    <button id="helpBtn" type="button" aria-expanded="false">🛈 Aide</button>
+    <div>
+      <button id="multiplayerBtn" type="button" title="Ouvrir le mode multijoueur">🎮 Multiplayer</button>
+    </div>
   </div>
 
   <h1>Cooldown Trainer - LoL</h1>
 
   <div id="modeSelector">
     <label for="mode">Choisissez un mode :</label>
-    <select id="mode">
+    <select id="mode" aria-label="Mode de jeu">
       <option value="normal">Normal</option>
       <option value="chrono">Chrono (60s)</option>
       <option value="hardcore">Hardcore</option>
     </select>
 
-    <button onclick="demarrerSession()">Démarrer</button>
+    <button id="startBtn" type="button">Démarrer</button>
   </div>
 
-  <h2 id="sort">Prêt ?</h2>
-  <input type="text" id="cdInput" placeholder="Entrer le CD" disabled />
-  <div>
-    <button id="verifierBtn" onclick="verifier()" disabled>Vérifier</button>
-    <button onclick="cdSuivant()" disabled id="nextBtn">CD suivant</button>
-    <button onclick="finSession()" disabled id="finBtn">Fin de session</button>
-    <button onclick="nouvelleSession()" style="display:none" id="resetBtn">Nouvelle session</button>
+  <h2 id="sort" aria-live="polite">Prêt ?</h2>
+
+  <div class="help-row">
+    <input type="text" id="cdInput" inputmode="numeric" autocomplete="off" placeholder="Entrer le CD" aria-label="Saisir le cooldown en secondes" disabled />
+    <button id="verifyBtn" type="button" disabled>Vérifier</button>
+    <button id="nextBtn" type="button" disabled>CD suivant</button>
+    <button id="endBtn" type="button" disabled>Fin de session</button>
+    <button id="resetBtn" type="button" style="display:none">Nouvelle session</button>
   </div>
 
-  <div id="timerDisplay"></div>
-  <p id="resultat"></p>
+  <div id="timerDisplay" aria-live="polite"></div>
+  <p id="resultat" role="status" aria-live="polite"></p>
   <h3 id="score"></h3>
 
-  <div id="historique"></div>
+  <div id="historique" aria-label="Historique des essais"></div>
 
   <div id="helpSection">
     <h3>Aide Cooldowns</h3>
-    <label for="championSelect">Choisissez un champion :</label>
-    <input type="text" id="championSearch" placeholder="🔍 Rechercher un champion" oninput="filtrerChampions()">
-    <select id="championSelect" onchange="afficherCooldownChampion()">
-      <option value="">-- Sélectionnez --</option>
-    </select>
+    <div class="help-row">
+      <label for="championSelect">Choisissez un champion :</label>
+      <input type="text" id="championSearch" placeholder="🔍 Rechercher un champion" aria-label="Rechercher un champion">
+      <select id="championSelect" aria-label="Liste des champions">
+        <option value="">-- Sélectionnez --</option>
+      </select>
+    </div>
     <div id="cooldownList" style="margin-top:10px;"></div>
   </div>
 
   <script>
-    let allSpells = {}, currentSpell = {}, modeJeu = 'normal';
-    let dejaVerifie = false, score = 0, total = 0;
-    let historique = [], sessionActive = false, timer = null, timeLeft = 60;
+  'use strict';
 
-    async function fetchData() {
-      const res = await fetch("data/championFull.json");
+  // ----- State -----
+  const STATE = {
+    mode: 'normal',
+    spells: [],           // [{name, cd}]
+    currentIndex: -1,     // index dans STATE.spells
+    current: null,        // {name, cd}
+    verified: false,
+    score: 0,
+    total: 0,
+    active: false,
+    timerId: null,
+    timeLeft: 60,
+    championsCache: null, // objet brut du JSON (data)
+  };
+
+  // ----- DOM helpers -----
+  const $ = (sel) => document.querySelector(sel);
+  const els = {
+    helpBtn: $('#helpBtn'),
+    multiplayerBtn: $('#multiplayerBtn'),
+    startBtn: $('#startBtn'),
+    nextBtn: $('#nextBtn'),
+    endBtn: $('#endBtn'),
+    resetBtn: $('#resetBtn'),
+    verifyBtn: $('#verifyBtn'),
+    mode: $('#mode'),
+    sort: $('#sort'),
+    cdInput: $('#cdInput'),
+    resultat: $('#resultat'),
+    score: $('#score'),
+    timer: $('#timerDisplay'),
+    historique: $('#historique'),
+    helpSection: $('#helpSection'),
+    championSelect: $('#championSelect'),
+    championSearch: $('#championSearch'),
+    cooldownList: $('#cooldownList'),
+    beep: $('#beepSound'),
+    fail: $('#failSound'),
+  };
+
+  // ----- Data -----
+  async function fetchData(){
+    try{
+      const res = await fetch('data/championFull.json', { cache: 'no-store' });
+      if(!res.ok) throw new Error('HTTP '+res.status);
       const json = await res.json();
       return json.data;
+    }catch(err){
+      console.error('Erreur de chargement des données', err);
+      els.resultat.textContent = "❗ Impossible de charger les données. Vérifiez le chemin 'data/championFull.json'.";
+      els.resultat.style.color = 'var(--red)';
+      throw err;
     }
-
-    async function chargerSort() {
-      if (!sessionActive) return;
-      if (Object.keys(allSpells).length === 0) {
-        const champions = await fetchData();
-        for (const champKey in champions) {
-          const champ = champions[champKey];
-          const spells = champ.spells;
-          if (spells.length === 4) {
-            ['Q', 'W', 'E', 'R'].forEach((key, i) => {
-              allSpells[champ.name + ' ' + key] = {
-                cd: spells[i].cooldown[0]
-              };
-            });
-          }
-        }
-      }
-      const keys = Object.keys(allSpells);
-      const randomKey = keys[Math.floor(Math.random() * keys.length)];
-      currentSpell = { name: randomKey, cd: allSpells[randomKey].cd.toString() };
-      dejaVerifie = false;
-      document.getElementById("verifierBtn").disabled = false;
-      document.getElementById("sort").innerText = currentSpell.name;
-      document.getElementById("resultat").innerText = "";
-      document.getElementById("cdInput").value = "";
-      document.getElementById("cdInput").focus();
-    }
-
-    function verifier() {
-      if (!sessionActive || dejaVerifie) return;
-
-      const cdInput = document.getElementById("cdInput");
-      const cd = cdInput.value.trim();
-      const resultatEl = document.getElementById("resultat");
-
-      if (!/^\d+$/.test(cd)) {
-        resultatEl.innerText = "⚠️ Veuillez entrer un nombre valide";
-        resultatEl.style.color = "#FFA500";
-        return;
-      }
-
-      dejaVerifie = true;
-      document.getElementById("verifierBtn").disabled = true;
-
-      const estCorrect = cd === currentSpell.cd;
-      resultatEl.innerText = estCorrect
-        ? "✅ Correct !"
-        : `❌ Faux. Le CD correct était : ${currentSpell.cd}`;
-      resultatEl.style.color = estCorrect ? "#4CAF50" : "#F44336";
-
-      total++;
-      if (estCorrect) score++;
-
-      historique.push({
-        sort: currentSpell.name,
-        reponse: cd,
-        correct: currentSpell.cd,
-        status: estCorrect
-      });
-
-      majScore();
-      ajouterCarteHistorique(historique[historique.length - 1]);
-
-      if (!estCorrect && modeJeu === 'hardcore') {
-        finSession();
-      }
-    }
-
-    function ajouterCarteHistorique(e) {
-      const c = document.createElement("div");
-      c.className = "essai " + (e.status ? "correct" : "incorrect");
-      c.innerHTML = `
-        <strong>${e.sort}</strong><br>
-        <span>Votre réponse : ${e.reponse}</span><br>
-        <span>CD correct : ${e.correct}</span><br>
-        <span>${e.status ? "✅ Bonne réponse" : "❌ Mauvaise réponse"}</span>
-      `;
-      document.getElementById("historique").prepend(c);
-    }
-
-    function majScore() {
-      document.getElementById("score").innerText = `Score : ${score} / ${total}`;
-    }
-
-    function cdSuivant() {
-      chargerSort();
-    }
-
-    function toggleHelp() {
-      const section = document.getElementById("helpSection");
-      section.style.display = section.style.display === "none" ? "block" : "none";
-      if (section.style.display === "block") loadChampionList();
-    }
-
-    async function loadChampionList() {
-  const champions = await fetchData();
-  window.championList = Object.values(champions).sort((a, b) => a.name.localeCompare(b.name));
-  const select = document.getElementById("championSelect");
-  select.innerHTML = '<option value="">-- Sélectionnez --</option>';
-  window.championList.forEach(champ => {
-    const opt = document.createElement("option");
-    opt.value = champ.name;
-    opt.textContent = champ.name;
-    select.appendChild(opt);
-  });
-}
-
-    async function afficherCooldownChampion() {
-  const selected = document.getElementById("championSelect").value;
-  if (!selected) return;
-  fetchData().then(champions => {
-    const champ = Object.values(champions).find(c => c.name === selected);
-    const cds = champ.spells.map((s, i) => `
-      <div style="margin: 5px 0; display: flex; align-items: center; gap: 10px;">
-        <img src='https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${s.image.full}' alt='${s.name}'  width='32' height='32' style='border-radius:4px;'>
-        <div>
-          <div><strong>${['Q','W','E','R'][i]}:</strong> ${s.cooldown[0]} sec</div>
-          <div style="font-size: 0.85rem; color: #ccc;"><strong>${s.name}</strong></div>
-          <div style="font-size: 0.75rem; color: #aaa;">
-            🌀 Portée : ${s.rangeBurn} | 💥 Dégâts : ${s.effectBurn[1] || '-'} | 🔋 Mana : ${s.costBurn}
-          </div>
-        </div>
-      </div>
-    `);
-    document.getElementById("cooldownList").innerHTML = `<strong>${champ.name}</strong><br>` + cds.join("");
-  });
-}
-
-    function demarrerSession() {
-      modeJeu = document.getElementById("mode").value;
-      sessionActive = true; score = 0; total = 0; historique = [];
-      document.getElementById("historique").innerHTML = "";
-      document.getElementById("cdInput").disabled = false;
-      document.getElementById("resetBtn").style.display = "none";
-      document.getElementById("nextBtn").disabled = false;
-      document.getElementById("finBtn").disabled = false;
-      document.getElementById("helpSection").style.display = "none";
-      majScore();
-      chargerSort();
-      if (modeJeu === 'chrono') lancerChrono();
-    }
-
-    function finSession() {
-  if (modeJeu === 'hardcore') {
-    const failSound = document.getElementById("failSound");
-    if (failSound) failSound.play();
-    document.body.style.animation = 'shake 0.6s';
-    setTimeout(() => document.body.style.animation = '', 600);
-    alert('💀 GAME OVER - Mode Hardcore');
   }
-      sessionActive = false;
-      document.getElementById("sort").innerText = "Session terminée.";
-      document.getElementById("cdInput").disabled = true;
-      document.getElementById("verifierBtn").disabled = true;
-      document.getElementById("nextBtn").disabled = true;
-      document.getElementById("finBtn").disabled = true;
-      document.getElementById("resetBtn").style.display = "inline-block";
-      if (timer) clearInterval(timer);
-      document.getElementById("timerDisplay").innerText = '';
-    }
 
-    function nouvelleSession() {
-      document.getElementById("cdInput").value = "";
-      document.getElementById("resultat").innerText = "";
-      demarrerSession();
-    }
+  async function ensureChampionsCache(){
+    if(STATE.championsCache) return STATE.championsCache;
+    STATE.championsCache = await fetchData();
+    return STATE.championsCache;
+  }
 
-    function lancerChrono() {
-  timeLeft = 60;
-  const tDisplay = document.getElementById("timerDisplay");
-  tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
-        updateBackgroundColor(timeLeft);
-  updateBackgroundColor(timeLeft);
-  timer = setInterval(() => {
-        timeLeft--;
-        tDisplay.innerText = `⏱️ Temps restant : ${timeLeft}s`;
-        if (timeLeft <= 10) {
-          const beep = document.getElementById("beepSound");
-          if (beep) beep.play();
+  async function buildSpellsPool(){
+    const champions = await ensureChampionsCache();
+    const pool = [];
+    for(const key in champions){
+      const champ = champions[key];
+      const spells = champ.spells || [];
+      const labels = ['Q','W','E','R'];
+      // certaines fiches peuvent ne pas avoir 4 sorts (skins/alt forms)
+      for(let i=0;i<Math.min(4, spells.length);i++){
+        const s = spells[i];
+        const cd = Array.isArray(s.cooldown) ? s.cooldown[0] : s.cooldown; // fallback
+        if(cd != null){
+          pool.push({ name: `${champ.name} ${labels[i]}`, cd: String(cd) });
         }
-        if (timeLeft <= 0) {
-          clearInterval(timer);
-          finSession();
-        }
-      }, 1000);
+      }
     }
+    STATE.spells = pool;
+  }
 
-    window.onload = () => {
-      document.getElementById("cdInput").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") verifier();
-      });
-      document.getElementById("cdInput").addEventListener("input", () => {
-        document.getElementById("resultat").innerText = "";
-      });
-    };
-  function filtrerChampions() {
-  const input = document.getElementById("championSearch").value.toLowerCase();
-  const select = document.getElementById("championSelect");
-  select.innerHTML = '<option value="">-- Sélectionnez --</option>';
-  window.championList
-    .filter(champ => champ.name.toLowerCase().includes(input))
-    .forEach(champ => {
-      const opt = document.createElement("option");
-      opt.value = champ.name;
-      opt.textContent = champ.name;
-      select.appendChild(opt);
+  // ----- Game flow -----
+  async function startSession(){
+    if(STATE.active) endSession(); // reset propre si déjà actif
+    STATE.mode = els.mode.value;
+    STATE.active = true;
+    STATE.score = 0; STATE.total = 0; STATE.verified = false;
+    STATE.currentIndex = -1; STATE.current = null;
+    els.resultat.textContent = '';
+    els.historique.innerHTML = '';
+    els.cdInput.value = '';
+
+    toggleControlsForSession(true);
+
+    // précharge données & pool
+    if(STATE.spells.length === 0){
+      await buildSpellsPool();
+    }
+    nextSpell();
+    if(STATE.mode === 'chrono') startTimer(); else stopTimer(true);
+  }
+
+  function endSession(hardcoreGameOver=false){
+    STATE.active = false; STATE.current = null; STATE.verified = false;
+    els.sort.textContent = hardcoreGameOver ? '💀 GAME OVER - Mode Hardcore' : 'Session terminée.';
+    toggleControlsForSession(false);
+    stopTimer(true);
+  }
+
+  function toggleControlsForSession(running){
+    els.cdInput.disabled = !running;
+    els.verifyBtn.disabled = !running;
+    els.nextBtn.disabled = !running;
+    els.endBtn.disabled = !running;
+    els.resetBtn.style.display = running ? 'none' : 'inline-block';
+    if(running) els.cdInput.focus();
+  }
+
+  function nextSpell(){
+    if(!STATE.active) return;
+    if(!STATE.spells.length){
+      els.resultat.textContent = 'Aucun sort disponible.';
+      return;
+    }
+    // éviter la répétition immédiate
+    let idx;
+    do { idx = Math.floor(Math.random()*STATE.spells.length); } while(STATE.spells.length>1 && idx === STATE.currentIndex);
+    STATE.currentIndex = idx;
+    STATE.current = STATE.spells[idx];
+    STATE.verified = false;
+
+    els.sort.textContent = STATE.current.name;
+    els.resultat.textContent = '';
+    els.cdInput.value = '';
+    els.verifyBtn.disabled = false;
+    els.cdInput.focus();
+  }
+
+  function verify(){
+    if(!STATE.active || STATE.verified || !STATE.current) return;
+    const raw = els.cdInput.value.trim();
+    if(!/^\d+$/.test(raw)){
+      setResultMsg('⚠️ Veuillez entrer un nombre valide', '#FFA500');
+      return;
+    }
+    STATE.verified = true;
+    els.verifyBtn.disabled = true;
+
+    const ok = raw === STATE.current.cd; // comparaison chaîne (données normalisées)
+    setResultMsg(ok ? '✅ Correct !' : `❌ Faux. Le CD correct était : ${STATE.current.cd}`, ok ? 'var(--green)' : 'var(--red)');
+
+    STATE.total++;
+    if(ok) STATE.score++;
+    updateScore();
+    pushHistory({ sort: STATE.current.name, reponse: raw, correct: STATE.current.cd, status: ok });
+
+    if(!ok && STATE.mode === 'hardcore'){
+      // secousse + son puis fin
+      if(els.fail) els.fail.currentTime = 0, els.fail.play().catch(()=>{});
+      document.body.style.animation = 'shake 0.6s';
+      setTimeout(()=>{ document.body.style.animation = ''; endSession(true); }, 600);
+    }
+  }
+
+  function pushHistory(e){
+    const c = document.createElement('div');
+    c.className = 'essai ' + (e.status ? 'correct' : 'incorrect');
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = e.sort;
+    const row1 = document.createElement('div'); row1.className = 'row';
+    row1.innerHTML = `<span>Votre réponse</span><span>${e.reponse}</span>`;
+    const row2 = document.createElement('div'); row2.className = 'row';
+    row2.innerHTML = `<span>CD correct</span><span>${e.correct}</span>`;
+    const row3 = document.createElement('div'); row3.className = 'row';
+    row3.innerHTML = `<span>Status</span><span>${e.status ? '✅' : '❌'}</span>`;
+
+    c.appendChild(name); c.appendChild(row1); c.appendChild(row2); c.appendChild(row3);
+    els.historique.prepend(c);
+  }
+
+  function updateScore(){
+    els.score.textContent = `Score : ${STATE.score} / ${STATE.total}`;
+  }
+
+  function startTimer(){
+    STATE.timeLeft = 60;
+    renderTimer();
+    updateBackgroundColor(STATE.timeLeft);
+    stopTimer();
+    STATE.timerId = setInterval(()=>{
+      STATE.timeLeft--;
+      renderTimer();
+      updateBackgroundColor(STATE.timeLeft);
+      if(STATE.timeLeft <= 10 && els.beep){ try{ els.beep.currentTime = 0; els.beep.play(); }catch(_){} }
+      if(STATE.timeLeft <= 0){ stopTimer(); endSession(); }
+    }, 1000);
+  }
+
+  function stopTimer(clearText=false){
+    if(STATE.timerId){ clearInterval(STATE.timerId); STATE.timerId = null; }
+    if(clearText){ els.timer.textContent = ''; resetBackground(); }
+  }
+
+  function renderTimer(){
+    els.timer.textContent = `⏱️ Temps restant : ${Math.max(0, STATE.timeLeft)}s`;
+  }
+
+  function setResultMsg(msg, color){
+    els.resultat.textContent = msg; els.resultat.style.color = color || '';
+  }
+
+  // ----- Help (champions list) -----
+  async function toggleHelp(){
+    const isOpen = els.helpSection.style.display === 'block';
+    els.helpSection.style.display = isOpen ? 'none' : 'block';
+    els.helpBtn.setAttribute('aria-expanded', String(!isOpen));
+    if(!isOpen){ await populateChampionSelect(); }
+  }
+
+  async function populateChampionSelect(){
+    const champions = await ensureChampionsCache();
+    const list = Object.values(champions).sort((a,b)=> a.name.localeCompare(b.name));
+    els.championSelect.innerHTML = '<option value="">-- Sélectionnez --</option>';
+    for(const champ of list){
+      const opt = document.createElement('option');
+      opt.value = champ.name; opt.textContent = champ.name; els.championSelect.appendChild(opt);
+    }
+    els.championSelect.onchange = () => showChampion(els.championSelect.value);
+    els.championSearch.oninput = () => filterChampionSelect(list, els.championSearch.value);
+  }
+
+  function filterChampionSelect(list, query){
+    const q = (query||'').toLowerCase();
+    els.championSelect.innerHTML = '<option value="">-- Sélectionnez --</option>';
+    list.filter(c => c.name.toLowerCase().includes(q)).forEach(champ=>{
+      const opt = document.createElement('option');
+      opt.value = champ.name; opt.textContent = champ.name; els.championSelect.appendChild(opt);
     });
-}
-function updateBackgroundColor(time) {
-  const percent = time / 60;
-  const red = Math.round(255 * (1 - percent));
-  const blue = Math.round(152 + (100 * percent));
-  document.body.style.background = `linear-gradient(135deg, rgb(${red},40,40), rgb(40,40,${blue}))`;
-}
-</script>
+  }
+
+  async function showChampion(name){
+    if(!name) { els.cooldownList.innerHTML = ''; return; }
+    const champions = await ensureChampionsCache();
+    const champ = Object.values(champions).find(c => c.name === name);
+    if(!champ){ els.cooldownList.textContent = 'Champion introuvable'; return; }
+    const labels = ['Q','W','E','R'];
+    const blocks = champ.spells.map((s,i)=>{
+      const cd = Array.isArray(s.cooldown) ? s.cooldown[0] : s.cooldown;
+      const img = s?.image?.full ? `https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${s.image.full}` : '';
+      const range = s.rangeBurn ?? '-';
+      const dmg = Array.isArray(s.effectBurn) ? (s.effectBurn[1] || '-') : '-';
+      const cost = s.costBurn ?? '-';
+      return `
+        <div style="margin:6px 0; display:flex; align-items:center; gap:10px;">
+          ${img ? `<img src="${img}" alt="${s.name}" width="32" height="32" style="border-radius:6px;">` : ''}
+          <div>
+            <div><strong>${labels[i] || '?'}:</strong> ${cd ?? '-'} sec</div>
+            <div style="font-size:.9rem; color: var(--muted);"><strong>${s.name}</strong></div>
+            <div style="font-size:.8rem; color: var(--muted-2);">
+              🌀 Portée : ${range} | 💥 Dégâts : ${dmg} | 🔋 Mana : ${cost}
+            </div>
+          </div>
+        </div>`;
+    });
+    els.cooldownList.innerHTML = `<strong>${champ.name}</strong><br>` + blocks.join('');
+  }
+
+  // ----- Background gradient animation -----
+  function updateBackgroundColor(time){
+    const total = 60;
+    const percent = Math.max(0, Math.min(1, time/total));
+    const red = Math.round(255 * (1 - percent));
+    const blue = Math.round(152 + (100 * percent));
+    document.body.style.background = `linear-gradient(135deg, rgb(${red},40,40), rgb(40,40,${blue}))`;
+  }
+  function resetBackground(){
+    document.body.style.background = `linear-gradient(135deg, var(--bg1), var(--bg2))`;
+  }
+
+  // ----- Events -----
+  document.addEventListener('DOMContentLoaded', () => {
+    els.helpBtn.addEventListener('click', toggleHelp);
+    els.multiplayerBtn.addEventListener('click', ()=>{ window.location.href = 'multiplayer.html'; });
+    els.startBtn.addEventListener('click', startSession);
+    els.nextBtn.addEventListener('click', nextSpell);
+    els.endBtn.addEventListener('click', ()=> endSession());
+    els.resetBtn.addEventListener('click', startSession);
+    els.verifyBtn.addEventListener('click', verify);
+
+    els.cdInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') verify();
+      if(e.key === 'Enter' && e.ctrlKey) nextSpell();
+    });
+    els.cdInput.addEventListener('input', ()=> setResultMsg(''));
+
+    updateScore();
+  });
+  </script>
 </body>
 </html>
