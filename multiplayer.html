@@ -37,9 +37,9 @@
     .fade-in { animation: fadeIn .25s ease both; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-    /* Leaderboard (room between) */
+    /* Leaderboard */
     #leaderboardSection { margin-top:18px; }
-    .lb-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.08); margin:8px 0; transition: transform .25s ease, background-color .25s ease; }
+    .lb-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.08); margin:8px 0; will-change: transform; }
     .lb-rank { width:34px; text-align:center; font-weight:800; }
     .lb-avatar { width:32px; height:32px; border-radius:50%; background:#fff; object-fit:cover; }
     .lb-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px; }
@@ -59,96 +59,55 @@
     @keyframes rise  { 0%{transform:translateY(6px)} 100%{transform:translateY(0)} }
     @keyframes fall  { 0%{transform:translateY(-6px)} 100%{transform:translateY(0)} }
 
-    #betweenInfo { margin-top:16px; background:rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; max-width:520px; margin-left:auto; margin-right:auto; }
+    /* LIVE badge + my rank chip */
+    .badge-live { display:inline-block; padding:2px 8px; border-radius:999px; font-weight:800; font-size:.8rem; background:#ffed4a; color:#3a2a00; margin-left:8px; }
+    #myLiveRank { display:inline-flex; align-items:center; gap:6px; margin-top:8px; }
 
-    /* Modal Hebdo */
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:999; }
-    .modal { background:#0f1d3a; border:1px solid rgba(255,255,255,.12); border-radius:14px; max-width:640px; width:92vw; padding:16px; text-align:left; }
-    .modal h3 { margin-top:0; }
-    .week-note { font-size:.9rem; opacity:.8; }
-    .global-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.06); margin:6px 0; }
-    .global-rank { width:32px; text-align:center; font-weight:800; }
-    .global-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .close-btn { float:right; background:#ffd700; color:#222; font-weight:700; border:none; border-radius:8px; padding:6px 10px; cursor:pointer; }
-
-    /* Podium between */
-    #podium { margin-top:10px; text-align:left; max-width:520px; margin-left:auto; margin-right:auto; }
-    .podium-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.06); margin:6px 0; }
-    .podium-rank { width:28px; text-align:center; font-weight:800; }
-    .podium-avatar { width:28px; height:28px; border-radius:50%; background:#fff; object-fit:cover; }
-    .podium-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .podium-meta { font-weight:700; }
-
-    /* Stats locales + Historique */
-    #localRow { margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-    .chip { background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.15); padding:8px 10px; border-radius:999px; font-size:.9rem; }
-    #historyWrap { max-width:620px; margin:10px auto 0; text-align:left; }
-    #historyList .hrow { display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.06); padding:8px 10px; border-radius:10px; margin:6px 0; }
-    .badge { padding:2px 6px; border-radius:6px; font-weight:800; font-size:.8rem; margin-left:6px; }
-    .b-perfect { background:#ffd700; color:#222; }
-    .b-fast { background:#7ee787; color:#0a3622; }
-    .b-close { background:#9cc3ff; color:#0c2147; }
-
-    /* Avatar preview pré-lobby */
-    #avatarPreview { width:48px; height:48px; border-radius:50%; background:#fff; object-fit:cover; }
-
-    /* --- PACK #2: Feedback instantané --- */
-    .input-valid   { box-shadow: 0 0 0 2px rgba(34,197,94,.9) inset; }
-    .input-invalid { box-shadow: 0 0 0 2px rgba(239,68,68,.9) inset; }
-    @keyframes shakeX {
-      0% { transform: translateX(0) }
-      20% { transform: translateX(-6px) }
-      40% { transform: translateX(6px) }
-      60% { transform: translateX(-4px) }
-      80% { transform: translateX(4px) }
-      100% { transform: translateX(0) }
+    /* Crown animation */
+    .crown {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:20px; height:20px; border-radius:50%;
+      background: radial-gradient(circle at 30% 30%, #ffe47a, #e6b400 60%, #7a5b00 100%);
+      box-shadow: 0 0 10px rgba(255,215,0,.6), 0 0 20px rgba(255,215,0,.25);
+      animation: crownPulse 1.5s ease-in-out infinite;
     }
-    .shake { animation: shakeX .32s ease; }
-
-    .answer-burst {
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
-      font-weight: 900;
-      line-height: 1.2;
-      margin: 6px auto 2px;
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 12px;
-      background: linear-gradient(90deg, rgba(34,197,94,.18), rgba(59,130,246,.18));
+    @keyframes crownPulse {
+      0% { transform: translateY(0) scale(1); box-shadow:0 0 10px rgba(255,215,0,.6),0 0 20px rgba(255,215,0,.25); }
+      50%{ transform: translateY(-1px) scale(1.06); box-shadow:0 0 12px rgba(255,215,0,.9),0 0 24px rgba(255,215,0,.35); }
+      100%{ transform: translateY(0) scale(1); }
     }
-    @keyframes popIn {
-      from { transform: scale(.92); opacity: 0; }
-      60%  { transform: scale(1.04); opacity: 1; }
-      to   { transform: scale(1); }
+    .crown:before {
+      content: "👑"; font-size:14px; filter: drop-shadow(0 0 2px rgba(0,0,0,.3));
     }
-    .pop-in { animation: popIn .35s ease-out both; }
 
-    /* --- PACK #3: Rythme & tension (visuel) --- */
-    .timer-final { color:#dc2626; animation: pulseTimer .6s ease-in-out infinite; }
-    @keyframes pulseTimer { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
-
-    .fade-slide { animation: fadeSlide .35s ease both; }
-    @keyframes fadeSlide { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
-
+    /* Teaser & flash (déjà pack 3) */
     .teaser-sort { filter: blur(3px) brightness(.9); opacity:.75; }
-
-    /* Overlay de flash discret & lisible (fin de tour) */
     .flash-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
+      position: fixed; inset: 0; pointer-events: none;
       background: radial-gradient(1200px 600px at 50% 40%, rgba(0,0,0,.28), rgba(0,0,0,0) 60%);
-      opacity: 0;
-      transition: opacity .18s ease;
-      z-index: 5; /* sous #topRight (z-index:10) */
+      opacity: 0; transition: opacity .18s ease; z-index: 5;
     }
     .flash-layer.show { opacity: 1; }
+
+    /* Pack 2 */
+    .input-valid   { box-shadow: 0 0 0 2px rgba(34,197,94,.9) inset; }
+    .input-invalid { box-shadow: 0 0 0 2px rgba(239,68,68,.9) inset; }
+    @keyframes shakeX { 0%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}100%{transform:translateX(0)} }
+    .shake { animation: shakeX .32s ease; }
+    .answer-burst { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; line-height: 1.2; margin: 6px auto 2px; display: inline-block; padding: 4px 10px; border-radius: 12px; background: linear-gradient(90deg, rgba(34,197,94,.18), rgba(59,130,246,.18)); }
+    @keyframes popIn { from{transform:scale(.92); opacity:0} 60%{transform:scale(1.04); opacity:1} to{transform:scale(1)} }
+    .pop-in { animation: popIn .35s ease-out both; }
+
+    /* Pack 3 */
+    .timer-final { color:#dc2626; animation: pulseTimer .6s ease-in-out infinite; }
+    @keyframes pulseTimer { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+    .fade-slide { animation: fadeSlide .35s ease both; }
+    @keyframes fadeSlide { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
   </style>
 </head>
 <body>
-  <!-- Overlay flash -->
   <div id="flashLayer" class="flash-layer"></div>
 
-  <!-- Boutons en haut à droite -->
   <div id="topRight">
     <a href="index.html" class="btn" title="Aller au mode Solo">🏠 Solo</a>
     <a id="shareBtn" class="btn" href="#" title="Copier le lien du salon">🔗 Lien du salon</a>
@@ -158,10 +117,7 @@
   <div id="welcome">
     <h1>Multiplayer Cooldown Trainer</h1>
     <div id="roomInfo" class="muted" style="margin-bottom:8px;"></div>
-
     <input id="nameInput" placeholder="Ton pseudo..." maxlength="24"/>
-
-    <!-- Aperçu avatar + select -->
     <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:6px;">
       <select id="avatarSelect" title="Avatar">
         <option value="https://api.dicebear.com/7.x/thumbs/svg?seed=Fox">🦊 Avatar 1</option>
@@ -171,13 +127,10 @@
       </select>
       <img id="avatarPreview" class="avatar" alt="aperçu avatar" />
     </div>
-
     <button id="joinBtn">Rejoindre</button>
     <button id="quickJoinBtn" class="hidden">⚡ Rejoindre en un clic</button>
-
     <div id="joinError" class="muted"></div>
 
-    <!-- Pré-lobby : liste des joueurs déjà présents -->
     <div id="preLobby" style="margin-top:18px;">
       <h3 style="margin:8px 0;">Joueurs dans ce salon</h3>
       <div id="playersPreview" class="player-grid"></div>
@@ -203,6 +156,8 @@
 
   <div id="game">
     <div id="status" class="muted"></div>
+    <div id="myLiveRank" class="chip hidden">Mon rang : —</div>
+
     <h2>Joueurs connectés</h2>
     <div class="player-grid" id="players"></div>
 
@@ -219,9 +174,9 @@
 
     <div id="betweenInfo" class="hidden"></div>
 
-    <div id="leaderboardSection" class="hidden">
-      <h3 style="margin:8px 0;">Classement</h3>
-      <div id="leaderboard" style="max-width:560px;margin:0 auto;text-align:left;"></div>
+    <div id="leaderboardSection">
+      <h3 id="lbTitle" style="margin:8px 0;">Classement</h3>
+      <div id="leaderboard" style="max-width:560px;margin:0 auto;text-align:left; position:relative;"></div>
     </div>
 
     <div id="restartRow" style="margin-top:14px; display:none">
@@ -232,7 +187,6 @@
       <button id="restartBtn">🔁 Relancer la partie</button>
     </div>
 
-    <!-- Stats locales + Historique -->
     <div id="localRow" class="hidden">
       <span class="chip" id="chipGames">Parties: 0</span>
       <span class="chip" id="chipRounds">Tours joués: 0</span>
@@ -246,7 +200,6 @@
     </div>
   </div>
 
-  <!-- Modal Classement Hebdo Global -->
   <div id="globalModal" class="modal-backdrop">
     <div class="modal">
       <button id="closeGlobal" class="close-btn">Fermer</button>
@@ -262,14 +215,10 @@
       getDatabase, ref, set, onValue, onDisconnect, update, get, remove,
       serverTimestamp, runTransaction, query, orderByChild, limitToLast
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-    import {
-      getAuth, signInAnonymously, onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // Sanity log (utile pour debug chargement SDK)
-    console.log('Firebase SDK chargé ? app=', !!initializeApp, ' db=', !!getDatabase, ' auth=', !!getAuth);
+    console.log('Firebase SDK chargé ? app=', !!initializeApp);
 
-    // -------- Firebase --------
     const firebaseConfig = {
       apiKey: "AIzaSyBjkxLbnCBZYvcyNRrGxwphT6nCyPOcGfI",
       authDomain: "cdguesser.firebaseapp.com",
@@ -283,12 +232,10 @@
     const db   = getDatabase(app);
     const auth = getAuth(app);
 
-    // -------- Constantes jeu --------
-    const DELAY_BETWEEN = 10;  // pause FIXE 10s
+    const DELAY_BETWEEN = 10;
     const SEASON_ID = "S1";
-    const FAST_MS = 3000;      // < 3 sec => badge Rapid
+    const FAST_MS = 3000;
 
-    // -------- Room handling --------
     function getRoomId() {
       const url = new URL(window.location.href);
       let id = url.searchParams.get('room');
@@ -304,10 +251,9 @@
     const stateRef    = ref(db, `rooms/${ROOM_ID}/state`);
     const answersRef  = ref(db, `rooms/${ROOM_ID}/answers`);
 
-    // Global leaderboard refs
     function getISOWeekKey(d=new Date()) {
       const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      const dayNum = (date.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+      const dayNum = (date.getUTCDay() + 6) % 7;
       date.setUTCDate(date.getUTCDate() - dayNum + 3);
       const firstThu = new Date(Date.UTC(date.getUTCFullYear(),0,4));
       const week = 1 + Math.round(((date - firstThu)/86400000 - 3 + ((firstThu.getUTCDay()+6)%7)) / 7);
@@ -320,7 +266,6 @@
     function globalSeasonRef(uid){ return ref(db, `leaderboards/seasons/${SEASON_ID}/${uid}`); }
     const profilesRef = (uid)=> ref(db, `profiles/${uid}`);
 
-    // UI share
     const shareBtn = document.getElementById('shareBtn');
     document.getElementById('roomInfo').textContent = `Salon : ${ROOM_ID}`;
     shareBtn.href = window.location.href;
@@ -329,50 +274,25 @@
       try { await navigator.clipboard.writeText(window.location.href); shareBtn.textContent = '✅ Lien copié'; setTimeout(()=>shareBtn.textContent='🔗 Lien du salon',1500);} catch(_) {}
     };
 
-    // -------- State --------
     let uid = null;
     let isHost = false;
     let cacheSpells = null;
     let timerInterval = null;
     let progressRAF = null;
     let lastSpellKey = null;
-    const AFK_LIMIT_MS = 5 * 60 * 1000;
     let heartbeatInterval = null;
     let GAME_CACHE = null;
-
-    // PACK 3 (local-only teaser)
-    let NEXT_SORT_LOCAL = null; // hôte uniquement, pas en base
-
+    let NEXT_SORT_LOCAL = null;
     let LAST_RANKS = {};
     let LAST_PHASE = null;
-
-    // NEW: Flag fin de partie pour stabiliser l'UI
     let GAME_OVER = false;
-
-    // Local stats + history
     let STATS = loadStats();
-    let HISTORY = []; // reset à chaque partie
+    let HISTORY = [];
+    let LATEST_PLAYERS = {};
 
-    // DOM helpers
     const el = (id)=>document.getElementById(id);
     const flashLayer = document.getElementById('flashLayer');
 
-    // Profil local + URL sûre
-    function loadLocalProfile() {
-      try { return JSON.parse(localStorage.getItem('cdg_profile') || 'null'); }
-      catch { return null; }
-    }
-    function saveLocalProfile(name, avatar) {
-      try { localStorage.setItem('cdg_profile', JSON.stringify({ name, avatar })); } catch {}
-    }
-    function safeUrl(u) {
-      try {
-        const url = new URL(u, location.origin);
-        return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : '';
-      } catch { return ''; }
-    }
-
-    // Auth
     onAuthStateChanged(auth, (u) => { if (u) uid = u.uid; });
     async function ensureAuth() {
       if (auth.currentUser) { uid = auth.currentUser.uid; return uid; }
@@ -381,7 +301,10 @@
       return uid;
     }
 
-    // init welcome (pré-remplissage + preview + quick join)
+    function loadLocalProfile() { try { return JSON.parse(localStorage.getItem('cdg_profile') || 'null'); } catch { return null; } }
+    function saveLocalProfile(name, avatar) { try { localStorage.setItem('cdg_profile', JSON.stringify({ name, avatar })); } catch {} }
+    function safeUrl(u) { try { const url = new URL(u, location.origin); return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : ''; } catch { return ''; } }
+
     (function initWelcomeForm() {
       const saved = loadLocalProfile();
       const nameInput = el('nameInput');
@@ -397,23 +320,15 @@
         quickBtn.classList.remove('hidden');
       }
 
-      avatarSelect.addEventListener('change', () => {
-        avatarPreview.src = safeUrl(avatarSelect.value);
-      });
-
+      avatarSelect.addEventListener('change', () => avatarPreview.src = safeUrl(avatarSelect.value));
       quickBtn.addEventListener('click', async () => {
         const s = loadLocalProfile();
         if (!s?.name || !s?.avatar) return;
         await doJoin(s.name, s.avatar);
       });
-
-      // Enter = cliquer sur rejoindre
-      nameInput.addEventListener('keydown', (e) => {
-        if (e.key === "Enter") el("joinBtn").click();
-      });
+      nameInput.addEventListener('keydown', (e) => { if (e.key === "Enter") el("joinBtn").click(); });
     })();
 
-    // Spells
     async function loadSpells() {
       if (cacheSpells) return cacheSpells;
       const res = await fetch("data/championFull.json");
@@ -439,7 +354,6 @@
       return s;
     }
 
-    // pré-lobby — aperçu joueurs avant de rejoindre
     const playersPreviewList = document.getElementById('playersPreview');
     onValue(playersRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -453,27 +367,15 @@
       `).join('') || `<div class="muted">Personne pour l’instant. Partage le lien 👆</div>`;
     });
 
-    // logique join factorisée (durcie)
     async function doJoin(name, avatar) {
-      try { 
-        await ensureAuth(); 
-      } catch (e) { 
-        el("joinError").textContent = "❌ Auth KO : " + (e?.message || e); 
-        throw e; // remonte l’erreur au caller
-      }
+      try { await ensureAuth(); }
+      catch (e) { el("joinError").textContent = "❌ Auth KO : " + (e?.message || e); throw e; }
 
       try {
         saveLocalProfile(name, avatar);
-
         const myRef = ref(db, `rooms/${ROOM_ID}/players/${uid}`);
-        await set(myRef, { 
-          name, avatar, score: 0, 
-          joinedAt: serverTimestamp(), lastSeen: serverTimestamp(), 
-          lastDelta: 0, lastAnswerValue: null, lastAnswerDiff: null 
-        });
+        await set(myRef, { name, avatar, score: 0, joinedAt: serverTimestamp(), lastSeen: serverTimestamp(), lastDelta: 0, lastAnswerValue: null, lastAnswerDiff: null });
         onDisconnect(myRef).remove();
-
-        // Profil global (pour hebdo)
         try { await update(profilesRef(uid), { name, avatar, lastSeen: serverTimestamp() }); } catch(_) {}
 
         el("welcome").style.display = "none";
@@ -492,12 +394,8 @@
           el("status").textContent = "Vous êtes l'hôte.";
         } else {
           isHost = (st.host === uid);
-          if (!isHost) {
-            el("waitingHost").style.display = "block";
-            el("status").textContent = "En attente du lancement par l'hôte…";
-          }
+          if (!isHost) { el("waitingHost").style.display = "block"; el("status").textContent = "En attente du lancement par l'hôte…"; }
         }
-
         startHeartbeat();
       } catch (e) {
         el("joinError").textContent = "❌ Erreur réseau/base : " + (e?.message || e);
@@ -505,10 +403,8 @@
       }
     }
 
-    // Players list + leaderboard (room)
     const playersList = el("players");
     let renderLeaderboardLastPlayersSnapshot = null;
-    let LATEST_PLAYERS = {}; // pour auto-advance
 
     onValue(playersRef, async (snapshot) => {
       const data = snapshot.val() || {};
@@ -528,13 +424,15 @@
 
       renderLeaderboardLastPlayersSnapshot = () => { 
         if (!GAME_OVER) {
-          renderLeaderboardFrom(data); 
+          renderLeaderboardFrom(data);
+          updateLiveRankChip(data);
           if (GAME_CACHE?.phase === 'between') renderBetweenInfo(data);
         }
       };
-      if (!GAME_OVER && GAME_CACHE && GAME_CACHE.phase === 'between') {
+      if (!GAME_OVER) {
         renderLeaderboardFrom(data);
-        renderBetweenInfo(data);
+        updateLiveRankChip(data);
+        if (GAME_CACHE?.phase === 'between') renderBetweenInfo(data);
       }
     });
 
@@ -556,7 +454,6 @@
       }
     }
 
-    // Start game
     el("startGameBtn").addEventListener("click", async () => {
       if (!isHost) return alert("Seul l'hôte peut lancer la partie !");
       const totalTurns   = clampInt(el("nbTours").value, 1, 50);
@@ -565,8 +462,8 @@
       const spells = await loadSpells();
       const first = randomSpell(spells);
 
-      NEXT_SORT_LOCAL = null; // reset
-      GAME_OVER = false;      // reset flag fin de partie
+      NEXT_SORT_LOCAL = null;
+      GAME_OVER = false;
 
       await set(stateRef, {
         host: uid,
@@ -583,45 +480,25 @@
       clearPlayersDeltas();
       LAST_RANKS = {};
       LAST_PHASE = 'answer';
-      HISTORY = []; // reset historique
-      bumpLocalGames(); // nouvelle partie
+      HISTORY = [];
+      bumpLocalGames();
     });
 
-    // Join flow (bouton standard) — robuste + erreurs visibles
     (function bindJoin(){
       const btn = el('joinBtn');
       if (!btn) return;
-
       const onClick = async () => {
         const nameInput = el('nameInput');
         const avatarSel = el('avatarSelect');
         const name = (nameInput?.value || '').trim().slice(0,24);
         const avatar = avatarSel?.value || '';
-
-        if (!name) {
-          const err = el('joinError');
-          err.textContent = "⚠️ Pseudo requis";
-          nameInput?.classList.add('shake');
-          setTimeout(()=> nameInput?.classList.remove('shake'), 340);
-          nameInput?.focus();
-          return;
-        }
-
-        btn.disabled = true;
-        btn.textContent = "Connexion…";
-
-        try {
-          await doJoin(name, avatar);
-        } catch(e) {
-          console.error('Join failed:', e);
-          el('joinError').textContent = "❌ Impossible de rejoindre : " + (e?.message || e);
-          btn.disabled = false;
-          btn.textContent = "Rejoindre";
-        }
+        if (!name) { const err = el('joinError'); err.textContent = "⚠️ Pseudo requis"; nameInput?.classList.add('shake'); setTimeout(()=> nameInput?.classList.remove('shake'), 340); nameInput?.focus(); return; }
+        btn.disabled = true; btn.textContent = "Connexion…";
+        try { await doJoin(name, avatar); } 
+        catch(e) { console.error('Join failed:', e); el('joinError').textContent = "❌ Impossible de rejoindre : " + (e?.message || e); btn.disabled = false; btn.textContent = "Rejoindre"; }
       };
-
       btn.addEventListener('click', onClick);
-      btn.onclick = onClick; // fallback
+      btn.onclick = onClick;
     })();
 
     function startHeartbeat(){
@@ -636,21 +513,15 @@
       ping();
     }
 
-    // Submit answer (+ Enter)
     el("submitBtn").addEventListener("click", submitAnswer);
-    el("answerInput").addEventListener("keydown", (e)=>{
-      if (e.key === "Enter") submitAnswer();
-    });
+    el("answerInput").addEventListener("keydown", (e)=>{ if (e.key === "Enter") submitAnswer(); });
 
-    /* ------------ PACK #2: validation live + shake ------------- */
-    function isValidAnswerValue(v) {
-      return /^\d{1,3}$/.test(v) && Number(v) >= 0 && Number(v) <= 999;
-    }
+    function isValidAnswerValue(v) { return /^\d{1,3}$/.test(v) && Number(v) >= 0 && Number(v) <= 999; }
     function applyInputFeedback() {
       const input = el("answerInput");
       const v = (input.value || "").trim();
       input.classList.remove("input-valid", "input-invalid");
-      if (!v) return; // neutre si vide
+      if (!v) return;
       if (isValidAnswerValue(v)) input.classList.add("input-valid");
       else input.classList.add("input-invalid");
     }
@@ -661,7 +532,6 @@
       const input = el("answerInput");
       const vRaw = input.value.trim();
       const valid = isValidAnswerValue(vRaw);
-
       if (!valid) {
         el("feedback").textContent = "⚠️ Entrez un nombre (0–999).";
         input.classList.remove("input-valid");
@@ -676,19 +546,12 @@
       if (!st || st.phase !== "answer") { el("feedback").textContent = "Tour verrouillé."; return; }
       await set(ref(db, `rooms/${ROOM_ID}/answers/${st.turn}/${uid}`), { value: val, at: serverTimestamp() });
 
-      // Feedback persistant
       el("feedback").textContent = "✅ Réponse enregistrée";
       input.classList.remove("input-invalid");
       input.classList.add("input-valid");
-      setTimeout(() => {
-        if (GAME_CACHE?.phase === 'answer') {
-          el("feedback").textContent = "";
-        }
-      }, 1200);
+      setTimeout(() => { if (GAME_CACHE?.phase === 'answer') el("feedback").textContent = ""; }, 1200);
     }
-    /* ----------------------------------------------------------- */
 
-    // PACK 3: Auto-advance si tout le monde a répondu
     onValue(answersRef, (snap)=>{
       const all = snap.val() || {};
       const turn = GAME_CACHE?.turn;
@@ -697,11 +560,10 @@
       const answeredCount = Object.keys(current).length;
       const playersCount  = Object.keys(LATEST_PLAYERS||{}).length;
       if (playersCount > 0 && answeredCount >= playersCount && isHost) {
-        tryAdvancePhase(); // l'hôte clôture immédiatement
+        tryAdvancePhase();
       }
     });
 
-    // State loop
     onValue(stateRef, (snap) => {
       const game = snap.val();
       if (!game || !game.settings) return;
@@ -710,11 +572,10 @@
       renderGame(game, prevPhase);
       setupTimer(game);
 
-      // Anim de transition UNIQUEMENT si la phase change (fix micro-coupure)
       if (prevPhase !== game.phase) {
         const gameEl = el('game');
         gameEl.classList.remove('fade-slide');
-        void gameEl.offsetWidth; // reflow
+        void gameEl.offsetWidth;
         gameEl.classList.add('fade-slide');
       }
 
@@ -723,6 +584,7 @@
           const snapPlayers = await get(playersRef);
           const playersObj = snapPlayers.val() || {};
           renderLeaderboardFrom(playersObj);
+          updateLiveRankChip(playersObj);
           renderBetweenInfo(playersObj);
         }, 100);
       }
@@ -737,38 +599,36 @@
       if (turn > totalTurns) { finDePartie(host); return; }
 
       el("answerSection").classList.toggle("hidden", phase !== "answer");
-      el("leaderboardSection").classList.toggle("hidden", phase !== "between");
+      // Leaderboard → TOUJOURS visible (live en answer)
+      el("leaderboardSection").classList.remove("hidden");
       el("betweenInfo").classList.toggle("hidden", phase !== "between");
 
+      el("lbTitle").innerHTML = phase === 'answer' ? `Classement <span class="badge-live">LIVE</span>` : `Classement`;
       el("sortDisplay").innerHTML = sort ? `<strong>${sort.champ} ${sort.key}</strong> — ${sort.name}` : "";
-      // on NE vide plus le feedback tout le temps
 
       el("status").textContent = (phase === "answer")
         ? `Tour ${turn}/${totalTurns} — Répondez !`
         : `Tour ${turn}/${totalTurns} terminé. Prochain dans ${delayBetween}s…`;
 
-      // autofocus phase "answer" + reset MINIMAL au moment d'ENTRER en phase answer
+      if (phase === 'answer') {
+        el('myLiveRank').classList.remove('hidden');
+      } else {
+        el('myLiveRank').classList.add('hidden');
+      }
+
       if (phase === 'answer' && prevPhase !== 'answer') {
-        setTimeout(()=> {
-          const inp = el('answerInput');
-          inp?.focus();
-          inp?.select?.();
-          // ne touche pas aux classes pour conserver le halo vert si présent
-        }, 50);
+        setTimeout(()=> { const inp = el('answerInput'); inp?.focus(); inp?.select?.(); }, 50);
         el('timer')?.classList?.remove('timer-final');
         if (flashLayer) flashLayer.classList.remove('show');
-        // on nettoie le feedback uniquement à l'entrée de la phase
         el("feedback").textContent = "";
       }
 
       el("restartRow").style.display = "none";
     }
 
-    // Timer + barre + effets finaux + avance transactionnelle
     function setupTimer(game) {
       clearInterval(timerInterval);
       if (progressRAF) { cancelAnimationFrame(progressRAF); progressRAF = null; }
-
       const { settings, phase, tsStart } = game;
       const per = (phase === "answer") ? settings.turnDuration : settings.delayBetween;
       const bar = el('timerBar');
@@ -784,7 +644,6 @@
         return;
       }
 
-      // Chrono (texte)
       let lastShown = null;
       const secTick = () => {
         const now = Date.now();
@@ -792,13 +651,8 @@
         if (!Number.isFinite(left)) left = per;
         left = Math.max(0, Math.min(per, left));
 
-        // affichage
-        if (left !== lastShown) {
-          timerText.textContent = `${left}s`;
-          lastShown = left;
-        }
+        if (left !== lastShown) { timerText.textContent = `${left}s`; lastShown = left; }
 
-        // effets finaux 3..2..1
         const finalPhase = left <= 3 && left > 0;
         timerText.classList.toggle('timer-final', finalPhase);
         bar.classList.toggle('danger', left <= 3 + 1e-3);
@@ -808,37 +662,31 @@
           clearInterval(timerInterval);
           timerText.classList.remove('timer-final');
           if (flashLayer) flashLayer.classList.remove('show');
-          tryAdvancePhase(); // answer->between ou between->next
+          tryAdvancePhase();
         }
       };
       secTick();
       timerInterval = setInterval(secTick, 250);
 
-      // Progress bar en ~60 FPS
       const loop = () => {
         const now = Date.now();
         const leftFloat = per - (now - startedAt)/1000;
         const clamped = Math.max(0, Math.min(per, leftFloat));
         const ratio = clamped / per || 0;
-
         bar.style.transform = `scaleX(${ratio})`;
-        if (clamped > 0) {
-          progressRAF = requestAnimationFrame(loop);
-        } else {
-          bar.style.transform = 'scaleX(0)';
-        }
+        if (clamped > 0) progressRAF = requestAnimationFrame(loop);
+        else bar.style.transform = 'scaleX(0)';
       };
       loop();
     }
 
-    // Avance de phase (lock transactionnel)
     async function tryAdvancePhase() {
       const lockRef = ref(db, `rooms/${ROOM_ID}/state/lock`);
       const now = Date.now();
       let gotLock = false;
 
       await runTransaction(lockRef, (cur) => {
-        const expired = !cur || !cur.at || (now - Number(cur.at) > 8000); // lock 8s
+        const expired = !cur || !cur.at || (now - Number(cur.at) > 8000);
         if (expired) return { by: uid || 'anon', at: now };
         return cur;
       }, { applyLocally: false }).then(res => {
@@ -855,19 +703,18 @@
         const per = (st.phase === "answer") ? st.settings.turnDuration : st.settings.delayBetween;
         const startedAt = Number(st.tsStart);
         const left = per - Math.floor((Date.now() - startedAt)/1000);
-        if (left > 0) return; // pas fini en réalité (lag)
+        if (left > 0) return;
 
         if (st.phase === "answer") {
-          await closeAndScoreTurn();   // passe en between (prépare NEXT_SORT_LOCAL côté hôte)
+          await closeAndScoreTurn();
         } else if (st.phase === "between") {
-          await startNextTurn(st);     // tour suivant
+          await startNextTurn(st);
         }
       } finally {
         try { await remove(lockRef); } catch(_) {}
       }
     }
 
-    // Scoring (Room) + Top3 badges + Global + PREP local next sort (host only)
     async function closeAndScoreTurn() {
       const stSnap = await get(stateRef);
       const game = stSnap.val();
@@ -881,7 +728,6 @@
       const ops = [];
       const playersMap = (await get(playersRef)).val() || {};
       const podiumArray = [];
-
       const tsStartNum = Number(game.tsStart) || 0;
 
       for (const pid in answers) {
@@ -892,10 +738,8 @@
         const diff = Math.abs(rep - correct);
         const pts = Math.max(0, 5000 - diff * 500);
 
-        // 1) score de la room
         ops.push(incrementScore(pid, pts));
 
-        // 2) delta affichage between + ms pour badges
         const answeredMs = (at && tsStartNum) ? Math.max(0, at - tsStartNum) : null;
         ops.push(update(ref(db, `rooms/${ROOM_ID}/players/${pid}`), {
           lastDelta: pts,
@@ -904,7 +748,6 @@
           lastAnswerMs: answeredMs
         }));
 
-        // 3) collecte top3 (+badges)
         const p = playersMap[pid] || {};
         const badges = [];
         if (diff === 0) badges.push('perfect');
@@ -918,47 +761,31 @@
           ms: answeredMs, badges
         });
 
-        // 4) leaderboard global
-        try { ops.push(incrementGlobal(pid, pts)); } catch (e) { console.error("incrementGlobal threw (sync):", e); }
+        try { ops.push(incrementGlobal(pid, pts)); } catch (_) {}
       }
 
-      // joueurs sans réponse : reset deltas
       for (const pid in playersMap) {
         if (!answers[pid]) {
           ops.push(update(ref(db, `rooms/${ROOM_ID}/players/${pid}`), {
-            lastDelta: 0,
-            lastAnswerValue: null,
-            lastAnswerDiff: null,
-            lastAnswerMs: null
+            lastDelta: 0, lastAnswerValue: null, lastAnswerDiff: null, lastAnswerMs: null
           }));
         }
       }
       await Promise.all(ops);
 
-      // calcule TOP3
       podiumArray.sort((a,b)=> a.diff - b.diff || a.value - b.value);
       const top3 = podiumArray.slice(0, 3);
 
-      // (host-only) préparer le prochain sort en local
-      if (isHost) {
-        const spells = await loadSpells();
-        NEXT_SORT_LOCAL = randomSpell(spells);
-      }
+      if (isHost) { const spells = await loadSpells(); NEXT_SORT_LOCAL = randomSpell(spells); }
 
-      // passe en between (sans nextSort en base)
-      await update(stateRef, {
-        phase: "between",
-        tsStart: serverTimestamp(),
-        top3
-      });
+      await update(stateRef, { phase: "between", tsStart: serverTimestamp(), top3 });
 
-      // rendu immédiat + stats locales/historique
       setTimeout(async () => {
         const snapshot = await get(playersRef);
         const playersObj = snapshot.val() || {};
         renderLeaderboardFrom(playersObj);
+        updateLiveRankChip(playersObj);
         renderBetweenInfo(playersObj);
-        updateLocalStatsAndHistory(playersObj, game);
       }, 50);
 
       try { await remove(ref(db, `rooms/${ROOM_ID}/answers/${turn}`)); } catch(_) {}
@@ -979,57 +806,29 @@
         const playerNodeRef = ref(db, `rooms/${ROOM_ID}/players/${pid}`);
         const playerNodeSnap = await get(playerNodeRef);
         const playerNode = playerNodeSnap.val() || {};
-
         const profSnap = await get(profilesRef(pid));
         const prof = profSnap.val() || {};
-
         const name = playerNode.name || prof.name || "Invité";
         const avatar = playerNode.avatar || prof.avatar || "https://api.dicebear.com/7.x/thumbs/svg?seed=Fox";
-
-        try { await update(profilesRef(pid), { name, avatar, lastSeen: serverTimestamp() }); } catch (e) {}
-
-        try {
-          await update(globalWeekRef(pid), { name, avatar });
-          const weekScoreRef = ref(db, `leaderboards/weeks/${WEEK_ID}/${pid}/score`);
-          await runTransaction(weekScoreRef, (current)=> (Number(current)||0) + delta);
-        } catch (e) {}
-
-        try {
-          await update(globalSeasonRef(pid), { name, avatar });
-          const seasonScoreRef = ref(db, `leaderboards/seasons/${SEASON_ID}/${pid}/score`);
-          await runTransaction(seasonScoreRef, (current)=> (Number(current)||0) + delta);
-        } catch (e) {}
-      } catch (e) {
-        console.error("incrementGlobal failed:", e?.code || e?.message || e);
-      }
+        try { await update(profilesRef(pid), { name, avatar, lastSeen: serverTimestamp() }); } catch (_) {}
+        try { await update(globalWeekRef(pid), { name, avatar }); const weekScoreRef = ref(db, `leaderboards/weeks/${WEEK_ID}/${pid}/score`); await runTransaction(weekScoreRef, (current)=> (Number(current)||0) + delta); } catch (_) {}
+        try { await update(globalSeasonRef(pid), { name, avatar }); const seasonScoreRef = ref(db, `leaderboards/seasons/${SEASON_ID}/${pid}/score`); await runTransaction(seasonScoreRef, (current)=> (Number(current)||0) + delta); } catch (_) {}
+      } catch (e) { console.error("incrementGlobal failed:", e?.code || e?.message || e); }
     }
 
-    // PACK 3: utiliser le next sort local (hôte) pour lancer le tour suivant
     async function startNextTurn(prevGame) {
       const { turn, settings } = prevGame;
-      if (turn >= settings.totalTurns) {
-        await update(stateRef, { turn: settings.totalTurns + 1 });
-        return;
-      }
+      if (turn >= settings.totalTurns) { await update(stateRef, { turn: settings.totalTurns + 1 }); return; }
       await clearPlayersDeltas();
-
       let chosen;
-      if (isHost && NEXT_SORT_LOCAL) {
-        chosen = NEXT_SORT_LOCAL;
-      } else {
-        const spells = await loadSpells();
-        chosen = randomSpell(spells);
-      }
+      if (isHost && NEXT_SORT_LOCAL) chosen = NEXT_SORT_LOCAL;
+      else { const spells = await loadSpells(); chosen = randomSpell(spells); }
       NEXT_SORT_LOCAL = null;
 
       await set(stateRef, {
-        host: prevGame.host,
-        settings,
-        turn: turn + 1,
-        phase: "answer",
-        sort: chosen,
-        tsStart: serverTimestamp(),
-        top3: null
+        host: prevGame.host, settings,
+        turn: turn + 1, phase: "answer",
+        sort: chosen, tsStart: serverTimestamp(), top3: null
       });
     }
 
@@ -1038,20 +837,15 @@
       const ops = [];
       for (const pid in players) {
         ops.push(update(ref(db, `rooms/${ROOM_ID}/players/${pid}`), {
-          lastDelta: 0,
-          lastAnswerValue: null,
-          lastAnswerDiff: null,
-          lastAnswerMs: null
+          lastDelta: 0, lastAnswerValue: null, lastAnswerDiff: null, lastAnswerMs: null
         }));
       }
       await Promise.all(ops);
     }
 
-    // Leaderboard room (between)
     function computeSortedList(playersObj) {
       const list = Object.entries(playersObj || {}).map(([id,p]) => ({
-        id, name: p.name || '—', avatar: p.avatar, score: Number(p.score)||0,
-        lastDelta: Number(p.lastDelta)||0
+        id, name: p.name || '—', avatar: p.avatar, score: Number(p.score)||0, lastDelta: Number(p.lastDelta)||0
       }));
       list.sort((a,b) => (b.score - a.score) || a.name.localeCompare(b.name));
       return list;
@@ -1063,22 +857,41 @@
       return map;
     }
 
+    function updateLiveRankChip(playersObj) {
+      if (!uid) return;
+      const list = computeSortedList(playersObj);
+      const rank = list.findIndex(p => p.id === uid) + 1;
+      const total = list.length || 0;
+      const chip = el('myLiveRank');
+      if (!rank || !total) { chip.textContent = "Mon rang : —"; return; }
+      chip.textContent = `Mon rang : ${rank}/${total}`;
+    }
+
+    // FLIP animation for leaderboard reorder + crown animation for leader
     function renderLeaderboardFrom(playersObj) {
+      const container = el('leaderboard');
       const list = computeSortedList(playersObj);
       const showDelta = (GAME_CACHE && GAME_CACHE.phase === 'between');
 
-      const rows = list.map((p, idx) => {
+      // measure first
+      const prevRects = new Map();
+      Array.from(container.children).forEach(child => {
+        const id = child.getAttribute('data-id');
+        if (id) prevRects.set(id, child.getBoundingClientRect());
+      });
+
+      // build new markup
+      const rowsHtml = list.map((p, idx) => {
         const rank = idx + 1;
         const prev = LAST_RANKS[p.id];
         let posDelta = 0;
-        if (prev != null) posDelta = prev - rank; // positif = montée
+        if (prev != null) posDelta = prev - rank;
         const arrow = posDelta > 0 ? `↑${posDelta}` : posDelta < 0 ? `↓${Math.abs(posDelta)}` : '–';
-        const posCls = posDelta > 0 ? 'gain rise' : posDelta < 0 ? 'loss fall' : '';
-        const podiumCls = rank<=3 ? ` lb-${rank} pulse` : '';
-        const crown = rank === 1 ? '👑' : '';
+        const podiumCls = rank<=3 ? ` lb-${rank}` : '';
+        const crown = rank === 1 ? `<span class="crown" title="Leader"></span>` : '';
 
         return `
-          <div class="lb-row ${podiumCls} ${posCls}">
+          <div class="lb-row${podiumCls}" data-id="${p.id}">
             <div class="lb-rank">${rank}</div>
             <img class="lb-avatar" src="${safeUrl(p.avatar)}" alt="">
             <div class="lb-name">${crown}${crown ? '&nbsp;' : ''}${escapeHtml(p.name)}</div>
@@ -1087,44 +900,58 @@
         `;
       }).join('') || `<div class="muted">Aucun joueur pour le moment.</div>`;
 
-      el('leaderboard').innerHTML = rows;
+      container.innerHTML = rowsHtml;
+
+      // measure last & play
+      Array.from(container.children).forEach(child => {
+        const id = child.getAttribute('data-id');
+        if (!id) return;
+        const last = child.getBoundingClientRect();
+        const first = prevRects.get(id);
+        if (!first) return;
+        const dy = first.top - last.top;
+        if (Math.abs(dy) > 1) {
+          child.style.transform = `translateY(${dy}px)`;
+          child.style.transition = 'transform 0s';
+          requestAnimationFrame(() => {
+            child.style.transition = 'transform .35s ease';
+            child.style.transform = 'translateY(0)';
+          });
+        }
+      });
+
+      // store ranks for next delta computation (posDelta arrow)
+      LAST_RANKS = {};
+      list.forEach((p, i)=> LAST_RANKS[p.id] = i+1);
     }
 
-    // Between info + TOP 3 (badges) — PACK #2 + SAFE si GAME_OVER
     function renderBetweenInfo(playersObj) {
-      if (GAME_OVER || !GAME_CACHE || GAME_CACHE.phase !== 'between') { 
-        el('betweenInfo').innerHTML = ''; 
-        return; 
-      }
+      if (GAME_OVER || !GAME_CACHE || GAME_CACHE.phase !== 'between') { el('betweenInfo').innerHTML = ''; return; }
       const correct = GAME_CACHE?.sort?.cd;
       const me = playersObj?.[uid] || {};
-
       const myVal  = (me.lastAnswerValue != null && me.lastAnswerValue !== '') ? `${me.lastAnswerValue} sec` : '—';
       const myDiff = (me.lastAnswerDiff  != null && me.lastAnswerDiff  !== '') ? `${me.lastAnswerDiff} sec`  : '—';
       const myDeltaNum = (typeof me.lastDelta === 'number') ? me.lastDelta : 0;
       const myDeltaTxt = myDeltaNum > 0 ? `+${myDeltaNum}` : '+0';
-
       const top3 = Array.isArray(GAME_CACHE.top3) ? GAME_CACHE.top3 : [];
 
-      const podiumHtml = top3.length
-        ? `
-          <div id="podium">
-            ${top3.map((p, i)=> {
-              const perfect = p.badges?.includes('perfect') ? ` <span class="badge b-perfect">🏅 Perfect!</span>` : '';
-              const fast    = p.badges?.includes('fast')    ? ` <span class="badge b-fast">⚡ Rapid</span>` : '';
-              const close   = p.badges?.includes('close')   ? ` <span class="badge b-close">🎯 Proche</span>` : '';
-              const msTxt   = (typeof p.ms === 'number') ? ` — ${(p.ms/1000).toFixed(2)}s` : '';
-              return `
-                <div class="podium-row">
-                  <div class="podium-rank">${i+1}</div>
-                  <img class="podium-avatar" src="${safeUrl(p.avatar)}" alt="">
-                  <div class="podium-name">${escapeHtml(p.name)}</div>
-                  <div class="podium-meta">${p.value}s (écart ${p.diff}s)${msTxt} · +${p.points}${perfect}${fast}${close}</div>
-                </div>
-              `;
-            }).join('')}
-          </div>`
-        : `<div class="muted" style="margin-top:6px;">Pas de podium ce tour.</div>`;
+      const podiumHtml = top3.length ? `
+        <div id="podium">
+          ${top3.map((p, i)=> {
+            const perfect = p.badges?.includes('perfect') ? ` <span class="badge b-perfect">🏅 Perfect!</span>` : '';
+            const fast    = p.badges?.includes('fast')    ? ` <span class="badge b-fast">⚡ Rapid</span>` : '';
+            const close   = p.badges?.includes('close')   ? ` <span class="badge b-close">🎯 Proche</span>` : '';
+            const msTxt   = (typeof p.ms === 'number') ? ` — ${(p.ms/1000).toFixed(2)}s` : '';
+            return `
+              <div class="podium-row">
+                <div class="podium-rank">${i+1}</div>
+                <img class="podium-avatar" src="${safeUrl(p.avatar)}" alt="">
+                <div class="podium-name">${escapeHtml(p.name)}</div>
+                <div class="podium-meta">${p.value}s (écart ${p.diff}s)${msTxt} · +${p.points}${perfect}${fast}${close}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>` : `<div class="muted" style="margin-top:6px;">Pas de podium ce tour.</div>`;
 
       el('betweenInfo').innerHTML = `
         <div class="answer-burst pop-in" aria-live="polite">
@@ -1140,15 +967,11 @@
       `;
     }
 
-    // Fin de partie + relance (avec cleanup total des effets) + FLAG
     function finDePartie(hostId) {
       GAME_OVER = true;
-
-      // Stoppe toute animation/flash résiduel
       if (timerInterval) clearInterval(timerInterval);
       if (progressRAF) { cancelAnimationFrame(progressRAF); progressRAF = null; }
-      const timerText = el('timer');
-      timerText.classList.remove('timer-final');
+      el('timer').classList.remove('timer-final');
       if (flashLayer) flashLayer.classList.remove('show');
       el('timerBar').style.transform = 'scaleX(0)';
 
@@ -1156,12 +979,9 @@
       el("answerSection").classList.add("hidden");
       el("status").textContent = "Merci d’avoir joué !";
       el("timer").textContent = "";
-      el("leaderboardSection").classList.remove("hidden");
 
       get(playersRef).then(s => { 
-        const obj = s.val() || {};
-        renderLeaderboardFrom(obj);
-        // pas de renderBetweenInfo si GAME_OVER
+        renderLeaderboardFrom(s.val() || {});
       });
 
       const showRestart = hostId === uid;
@@ -1179,9 +999,7 @@
 
         if (resetScores) {
           const players = (await get(playersRef)).val() || {};
-          const ops = Object.keys(players).map(pid =>
-            update(ref(db, `rooms/${ROOM_ID}/players/${pid}`), { score: 0 })
-          );
+          const ops = Object.keys(players).map(pid => update(ref(db, `rooms/${ROOM_ID}/players/${pid}`), { score: 0 }));
           await Promise.all(ops);
         }
 
@@ -1192,23 +1010,17 @@
 
         const spells = await loadSpells();
         const first = randomSpell(spells);
-
         const totalTurns   = st.settings?.totalTurns   ?? 10;
         const turnDuration = st.settings?.turnDuration ?? 30;
 
         await set(stateRef, {
-          host: st.host,
-          settings: { totalTurns, turnDuration, delayBetween: DELAY_BETWEEN },
-          turn: 1,
-          phase: "answer",
-          sort: first,
-          tsStart: serverTimestamp(),
-          top3: null
+          host: st.host, settings: { totalTurns, turnDuration, delayBetween: DELAY_BETWEEN },
+          turn: 1, phase: "answer", sort: first, tsStart: serverTimestamp(), top3: null
         });
 
         LAST_RANKS = {};
         LAST_PHASE = 'answer';
-        HISTORY = []; // reset
+        HISTORY = [];
         bumpLocalGames();
 
         el("restartRow").style.display = "none";
@@ -1219,7 +1031,6 @@
       }
     });
 
-    // Global leaderboard UI
     const globalModal = el('globalModal');
     el('openGlobalBtn').addEventListener('click', async (ev)=>{
       ev.preventDefault();
@@ -1253,7 +1064,6 @@
       el('globalList').innerHTML = html;
     }
 
-    // Watchdog AFK host
     async function kickIfHostAFK() {
       const stSnap = await get(stateRef);
       const st = stSnap.val();
@@ -1275,13 +1085,11 @@
 
       const newHostId = candidates[0][0];
       await runTransaction(ref(db, `rooms/${ROOM_ID}/state/host`), (current) => current === hostId ? newHostId : current);
-
       try { await remove(ref(db, `rooms/${ROOM_ID}/players/${hostId}`)); } catch(_) {}
     }
     setInterval(kickIfHostAFK, 30*1000);
     onValue(stateRef, () => { kickIfHostAFK(); });
 
-    // Stats locales + Historique
     document.getElementById('toggleHistory').addEventListener('click', ()=>{
       document.getElementById('historyWrap').classList.toggle('hidden');
       renderHistory();
@@ -1295,35 +1103,26 @@
     function renderStatsChips() {
       const avg = STATS.rounds ? (STATS.sumDiff / STATS.rounds) : 0;
       const pct = STATS.rounds ? Math.round((STATS.perfects / STATS.rounds) * 100) : 0;
-      document.getElementById('chipGames').textContent  = `Parties: ${STATS.games}`;
-      document.getElementById('chipRounds').textContent = `Tours joués: ${STATS.rounds}`;
-      document.getElementById('chipPerfect').textContent= `Perfects: ${STATS.perfects} (${pct}%)`;
-      document.getElementById('chipAvg').textContent    = STATS.rounds ? `Diff moyen: ${avg.toFixed(2)}` : 'Diff moyen: —';
-      document.getElementById('chipStreak').textContent = `Série perfect: ${STATS.streak} (best ${STATS.bestStreak})`;
+      el('chipGames').textContent  = `Parties: ${STATS.games}`;
+      el('chipRounds').textContent = `Tours joués: ${STATS.rounds}`;
+      el('chipPerfect').textContent= `Perfects: ${STATS.perfects} (${pct}%)`;
+      el('chipAvg').textContent    = STATS.rounds ? `Diff moyen: ${avg.toFixed(2)}` : 'Diff moyen: —';
+      el('chipStreak').textContent = `Série perfect: ${STATS.streak} (best ${STATS.bestStreak})`;
     }
     function bumpLocalGames(){ STATS.games++; saveStats(); renderStatsChips(); }
 
     function updateLocalStatsAndHistory(playersObj, game) {
       const me = playersObj?.[uid] || {};
       if (me == null) return;
-
-      // stats
       if (me.lastAnswerDiff != null) {
         STATS.rounds++;
         const d = Number(me.lastAnswerDiff) || 0;
         STATS.sumDiff += d;
-        if (d === 0) {
-          STATS.perfects++;
-          STATS.streak++;
-          STATS.bestStreak = Math.max(STATS.bestStreak, STATS.streak);
-        } else {
-          STATS.streak = 0;
-        }
-        saveStats();
-        renderStatsChips();
+        if (d === 0) { STATS.perfects++; STATS.streak++; STATS.bestStreak = Math.max(STATS.bestStreak, STATS.streak); }
+        else { STATS.streak = 0; }
+        saveStats(); renderStatsChips();
       }
 
-      // historique (local)
       const sort = game?.sort || {};
       const badges = [];
       if (me.lastAnswerDiff === 0) badges.push('perfect');
@@ -1332,12 +1131,8 @@
 
       HISTORY.push({
         champ: sort.champ, key: sort.key, name: sort.name,
-        correct: sort.cd,
-        value: me.lastAnswerValue,
-        diff: me.lastAnswerDiff,
-        points: me.lastDelta,
-        ms: me.lastAnswerMs,
-        badges
+        correct: sort.cd, value: me.lastAnswerValue, diff: me.lastAnswerDiff,
+        points: me.lastDelta, ms: me.lastAnswerMs, badges
       });
       renderHistory();
     }
@@ -1360,15 +1155,8 @@
       }).join('');
     }
 
-    // Utils
-    function clampInt(val, min, max) {
-      const n = parseInt(val, 10);
-      if (isNaN(n)) return min;
-      return Math.max(min, Math.min(max, n));
-    }
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (m)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
-    }
+    function clampInt(val, min, max) { const n = parseInt(val, 10); if (isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (m)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
 
     window.addEventListener("beforeunload", ()=> {
       if (timerInterval) clearInterval(timerInterval);
