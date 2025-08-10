@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cooldown Multiplayer (Rooms)</title>
   <style>
-    body { font-family: Montserrat, system-ui, -apple-system, sans-serif; background:#1e3c72; color:#fff; padding:30px; text-align:center; }
+    body { font-family: Montserrat, system-ui, -apple-system, sans-serif; background:#1e3c72; color:#fff; padding:30px; text-align:center; transition: background-color .15s ease; }
     input, button, select { font-size:1rem; padding:10px; margin:10px; border-radius:6px; border:none; }
     button { cursor:pointer }
     a.btn { text-decoration:none; background:#ffd700; color:#222; font-weight:700; padding:8px 12px; border-radius:8px; }
@@ -89,7 +89,7 @@
     .b-fast { background:#7ee787; color:#0a3622; }
     .b-close { background:#9cc3ff; color:#0c2147; }
 
-    /* NEW: avatar preview légèrement plus grand dans le pré-lobby */
+    /* Avatar preview pré-lobby */
     #avatarPreview { width:48px; height:48px; border-radius:50%; background:#fff; object-fit:cover; }
 
     /* --- PACK #2: Feedback instantané --- */
@@ -121,9 +121,33 @@
       to   { transform: scale(1); }
     }
     .pop-in { animation: popIn .35s ease-out both; }
+
+    /* --- PACK #3: Rythme & tension (visuel) --- */
+    .timer-final { color:#dc2626; animation: pulseTimer .6s ease-in-out infinite; }
+    @keyframes pulseTimer { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+    .fade-slide { animation: fadeSlide .35s ease both; }
+    @keyframes fadeSlide { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+
+    .teaser-sort { filter: blur(3px) brightness(.9); opacity:.75; }
+
+    /* Overlay de flash discret & lisible (fin de tour) */
+    .flash-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(1200px 600px at 50% 40%, rgba(0,0,0,.28), rgba(0,0,0,0) 60%);
+      opacity: 0;
+      transition: opacity .18s ease;
+      z-index: 5; /* sous #topRight (z-index:10) */
+    }
+    .flash-layer.show { opacity: 1; }
   </style>
 </head>
 <body>
+  <!-- Overlay flash -->
+  <div id="flashLayer" class="flash-layer"></div>
+
   <!-- Boutons en haut à droite -->
   <div id="topRight">
     <a href="index.html" class="btn" title="Aller au mode Solo">🏠 Solo</a>
@@ -149,7 +173,6 @@
     </div>
 
     <button id="joinBtn">Rejoindre</button>
-    <!-- Rejoindre en un clic si profil sauvegardé -->
     <button id="quickJoinBtn" class="hidden">⚡ Rejoindre en un clic</button>
 
     <div id="joinError" class="muted"></div>
@@ -243,6 +266,9 @@
       getAuth, signInAnonymously, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+    // Sanity log (utile pour debug chargement SDK)
+    console.log('Firebase SDK chargé ? app=', !!initializeApp, ' db=', !!getDatabase, ' auth=', !!getAuth);
+
     // -------- Firebase --------
     const firebaseConfig = {
       apiKey: "AIzaSyBjkxLbnCBZYvcyNRrGxwphT6nCyPOcGfI",
@@ -314,8 +340,14 @@
     let heartbeatInterval = null;
     let GAME_CACHE = null;
 
+    // PACK 3 (local-only teaser)
+    let NEXT_SORT_LOCAL = null; // hôte uniquement, pas en base
+
     let LAST_RANKS = {};
     let LAST_PHASE = null;
+
+    // NEW: Flag fin de partie pour stabiliser l'UI
+    let GAME_OVER = false;
 
     // Local stats + history
     let STATS = loadStats();
@@ -323,8 +355,9 @@
 
     // DOM helpers
     const el = (id)=>document.getElementById(id);
+    const flashLayer = document.getElementById('flashLayer');
 
-    // ---------- Profil local + URL sûre ----------
+    // Profil local + URL sûre
     function loadLocalProfile() {
       try { return JSON.parse(localStorage.getItem('cdg_profile') || 'null'); }
       catch { return null; }
@@ -348,7 +381,7 @@
       return uid;
     }
 
-    // ---------- init welcome (pré-remplissage + preview + quick join) ----------
+    // init welcome (pré-remplissage + preview + quick join)
     (function initWelcomeForm() {
       const saved = loadLocalProfile();
       const nameInput = el('nameInput');
@@ -406,7 +439,7 @@
       return s;
     }
 
-    // ---------- pré-lobby — aperçu joueurs avant de rejoindre ----------
+    // pré-lobby — aperçu joueurs avant de rejoindre
     const playersPreviewList = document.getElementById('playersPreview');
     onValue(playersRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -420,70 +453,66 @@
       `).join('') || `<div class="muted">Personne pour l’instant. Partage le lien 👆</div>`;
     });
 
-    // ---------- logique join factorisée ----------
+    // logique join factorisée (durcie)
     async function doJoin(name, avatar) {
-      try { await ensureAuth(); } catch (e) { el("joinError").textContent = "Auth KO"; return; }
-
-      saveLocalProfile(name, avatar);
-
-      const myRef = ref(db, `rooms/${ROOM_ID}/players/${uid}`);
-      await set(myRef, { name, avatar, score: 0, joinedAt: serverTimestamp(), lastSeen: serverTimestamp(), lastDelta: 0, lastAnswerValue: null, lastAnswerDiff: null });
-      onDisconnect(myRef).remove();
-
-      // Profil global (pour hebdo)
-      try { await update(profilesRef(uid), { name, avatar, lastSeen: serverTimestamp() }); } catch(_) {}
-
-      el("welcome").style.display = "none";
-      el("game").style.display = "block";
-      el("localRow").classList.remove('hidden');
-      renderStatsChips();
-
-      const stateSnap = await get(stateRef);
-      const st = stateSnap.val();
-      if (!st || !st.host) {
-        isHost = true;
-        await update(stateRef, { host: uid });
-        el("settingsContainer").style.display = "block";
-        el("startGameBtn").style.display = "inline-block";
-        el("waitingHost").style.display = "none";
-        el("status").textContent = "Vous êtes l'hôte.";
-      } else {
-        isHost = (st.host === uid);
-        if (!isHost) {
-          el("waitingHost").style.display = "block";
-          el("status").textContent = "En attente du lancement par l'hôte…";
-        }
+      try { 
+        await ensureAuth(); 
+      } catch (e) { 
+        el("joinError").textContent = "❌ Auth KO : " + (e?.message || e); 
+        throw e; // remonte l’erreur au caller
       }
 
-      startHeartbeat();
-    }
+      try {
+        saveLocalProfile(name, avatar);
 
-    // Join flow (bouton standard)
-    el("joinBtn").addEventListener("click", async () => {
-      const name = el("nameInput").value.trim().slice(0,24);
-      const avatar = el("avatarSelect").value;
-      if (!name) { el("joinError").textContent = "Pseudo requis"; return; }
-      await doJoin(name, avatar);
-    });
+        const myRef = ref(db, `rooms/${ROOM_ID}/players/${uid}`);
+        await set(myRef, { 
+          name, avatar, score: 0, 
+          joinedAt: serverTimestamp(), lastSeen: serverTimestamp(), 
+          lastDelta: 0, lastAnswerValue: null, lastAnswerDiff: null 
+        });
+        onDisconnect(myRef).remove();
 
-    function startHeartbeat(){
-      const ping = async ()=> { try {
-        await update(ref(db, `rooms/${ROOM_ID}/players/${uid}`), { lastSeen: serverTimestamp() });
-        await update(profilesRef(uid), { lastSeen: serverTimestamp() });
-      } catch(_){} };
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-      heartbeatInterval = setInterval(ping, 30*1000);
-      ['pointerdown','keydown','touchstart'].forEach(ev => document.addEventListener(ev, ping, { passive: true }));
-      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) ping(); });
-      ping();
+        // Profil global (pour hebdo)
+        try { await update(profilesRef(uid), { name, avatar, lastSeen: serverTimestamp() }); } catch(_) {}
+
+        el("welcome").style.display = "none";
+        el("game").style.display = "block";
+        el("localRow").classList.remove('hidden');
+        renderStatsChips();
+
+        const stateSnap = await get(stateRef);
+        const st = stateSnap.val();
+        if (!st || !st.host) {
+          isHost = true;
+          await update(stateRef, { host: uid });
+          el("settingsContainer").style.display = "block";
+          el("startGameBtn").style.display = "inline-block";
+          el("waitingHost").style.display = "none";
+          el("status").textContent = "Vous êtes l'hôte.";
+        } else {
+          isHost = (st.host === uid);
+          if (!isHost) {
+            el("waitingHost").style.display = "block";
+            el("status").textContent = "En attente du lancement par l'hôte…";
+          }
+        }
+
+        startHeartbeat();
+      } catch (e) {
+        el("joinError").textContent = "❌ Erreur réseau/base : " + (e?.message || e);
+        throw e;
+      }
     }
 
     // Players list + leaderboard (room)
     const playersList = el("players");
     let renderLeaderboardLastPlayersSnapshot = null;
+    let LATEST_PLAYERS = {}; // pour auto-advance
 
     onValue(playersRef, async (snapshot) => {
       const data = snapshot.val() || {};
+      LATEST_PLAYERS = data;
       playersList.innerHTML = "";
       const entries = Object.entries(data).sort((a,b)=> (Number(a[1].joinedAt||0) - Number(b[1].joinedAt||0)));
       for (const [id, p] of entries) {
@@ -497,8 +526,13 @@
       }
       await reassignHostIfNeeded(data);
 
-      renderLeaderboardLastPlayersSnapshot = () => { renderLeaderboardFrom(data); if (GAME_CACHE?.phase === 'between') renderBetweenInfo(data); };
-      if (GAME_CACHE && GAME_CACHE.phase === 'between') {
+      renderLeaderboardLastPlayersSnapshot = () => { 
+        if (!GAME_OVER) {
+          renderLeaderboardFrom(data); 
+          if (GAME_CACHE?.phase === 'between') renderBetweenInfo(data);
+        }
+      };
+      if (!GAME_OVER && GAME_CACHE && GAME_CACHE.phase === 'between') {
         renderLeaderboardFrom(data);
         renderBetweenInfo(data);
       }
@@ -531,6 +565,9 @@
       const spells = await loadSpells();
       const first = randomSpell(spells);
 
+      NEXT_SORT_LOCAL = null; // reset
+      GAME_OVER = false;      // reset flag fin de partie
+
       await set(stateRef, {
         host: uid,
         settings: { totalTurns, turnDuration, delayBetween: DELAY_BETWEEN },
@@ -549,6 +586,55 @@
       HISTORY = []; // reset historique
       bumpLocalGames(); // nouvelle partie
     });
+
+    // Join flow (bouton standard) — robuste + erreurs visibles
+    (function bindJoin(){
+      const btn = el('joinBtn');
+      if (!btn) return;
+
+      const onClick = async () => {
+        const nameInput = el('nameInput');
+        const avatarSel = el('avatarSelect');
+        const name = (nameInput?.value || '').trim().slice(0,24);
+        const avatar = avatarSel?.value || '';
+
+        if (!name) {
+          const err = el('joinError');
+          err.textContent = "⚠️ Pseudo requis";
+          nameInput?.classList.add('shake');
+          setTimeout(()=> nameInput?.classList.remove('shake'), 340);
+          nameInput?.focus();
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Connexion…";
+
+        try {
+          await doJoin(name, avatar);
+        } catch(e) {
+          console.error('Join failed:', e);
+          el('joinError').textContent = "❌ Impossible de rejoindre : " + (e?.message || e);
+          btn.disabled = false;
+          btn.textContent = "Rejoindre";
+        }
+      };
+
+      btn.addEventListener('click', onClick);
+      btn.onclick = onClick; // fallback
+    })();
+
+    function startHeartbeat(){
+      const ping = async ()=> { try {
+        await update(ref(db, `rooms/${ROOM_ID}/players/${uid}`), { lastSeen: serverTimestamp() });
+        await update(profilesRef(uid), { lastSeen: serverTimestamp() });
+      } catch(_){} };
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      heartbeatInterval = setInterval(ping, 30*1000);
+      ['pointerdown','keydown','touchstart'].forEach(ev => document.addEventListener(ev, ping, { passive: true }));
+      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) ping(); });
+      ping();
+    }
 
     // Submit answer (+ Enter)
     el("submitBtn").addEventListener("click", submitAnswer);
@@ -589,29 +675,50 @@
       const st = (await get(stateRef)).val();
       if (!st || st.phase !== "answer") { el("feedback").textContent = "Tour verrouillé."; return; }
       await set(ref(db, `rooms/${ROOM_ID}/answers/${st.turn}/${uid}`), { value: val, at: serverTimestamp() });
+
+      // Feedback persistant
       el("feedback").textContent = "✅ Réponse enregistrée";
       input.classList.remove("input-invalid");
       input.classList.add("input-valid");
+      setTimeout(() => {
+        if (GAME_CACHE?.phase === 'answer') {
+          el("feedback").textContent = "";
+        }
+      }, 1200);
     }
     /* ----------------------------------------------------------- */
+
+    // PACK 3: Auto-advance si tout le monde a répondu
+    onValue(answersRef, (snap)=>{
+      const all = snap.val() || {};
+      const turn = GAME_CACHE?.turn;
+      if (!turn || GAME_CACHE?.phase !== 'answer') return;
+      const current = all[turn] || {};
+      const answeredCount = Object.keys(current).length;
+      const playersCount  = Object.keys(LATEST_PLAYERS||{}).length;
+      if (playersCount > 0 && answeredCount >= playersCount && isHost) {
+        tryAdvancePhase(); // l'hôte clôture immédiatement
+      }
+    });
 
     // State loop
     onValue(stateRef, (snap) => {
       const game = snap.val();
       if (!game || !game.settings) return;
+
       const prevPhase = LAST_PHASE;
-      renderGame(game);
+      renderGame(game, prevPhase);
       setupTimer(game);
 
-      // fade-in lors du changement
+      // Anim de transition UNIQUEMENT si la phase change (fix micro-coupure)
       if (prevPhase !== game.phase) {
-        const toFade = [];
-        if (game.phase === 'answer') toFade.push('answerSection');
-        if (game.phase === 'between') { toFade.push('betweenInfo','leaderboardSection'); }
-        toFade.forEach(id => { el(id).classList.add('fade-in'); setTimeout(()=>el(id).classList.remove('fade-in'), 280); });
+        const gameEl = el('game');
+        gameEl.classList.remove('fade-slide');
+        void gameEl.offsetWidth; // reflow
+        gameEl.classList.add('fade-slide');
       }
 
-      if (game.phase === 'between') {
+      if (!GAME_OVER && game.phase === 'between') {
         setTimeout(async () => {
           const snapPlayers = await get(playersRef);
           const playersObj = snapPlayers.val() || {};
@@ -621,7 +728,7 @@
       }
     });
 
-    function renderGame(game) {
+    function renderGame(game, prevPhase) {
       LAST_PHASE = game.phase;
       GAME_CACHE = game;
 
@@ -634,25 +741,30 @@
       el("betweenInfo").classList.toggle("hidden", phase !== "between");
 
       el("sortDisplay").innerHTML = sort ? `<strong>${sort.champ} ${sort.key}</strong> — ${sort.name}` : "";
-      el("feedback").textContent = "";
+      // on NE vide plus le feedback tout le temps
+
       el("status").textContent = (phase === "answer")
         ? `Tour ${turn}/${totalTurns} — Répondez !`
         : `Tour ${turn}/${totalTurns} terminé. Prochain dans ${delayBetween}s…`;
 
-      // autofocus phase "answer" + reset feedback visuel
-      if (phase === 'answer') {
+      // autofocus phase "answer" + reset MINIMAL au moment d'ENTRER en phase answer
+      if (phase === 'answer' && prevPhase !== 'answer') {
         setTimeout(()=> {
           const inp = el('answerInput');
           inp?.focus();
           inp?.select?.();
-          inp?.classList?.remove('input-valid','input-invalid','shake');
+          // ne touche pas aux classes pour conserver le halo vert si présent
         }, 50);
+        el('timer')?.classList?.remove('timer-final');
+        if (flashLayer) flashLayer.classList.remove('show');
+        // on nettoie le feedback uniquement à l'entrée de la phase
+        el("feedback").textContent = "";
       }
 
       el("restartRow").style.display = "none";
     }
 
-    // Timer + barre ultra-smooth (sans bip) + avance de phase transactionnelle
+    // Timer + barre + effets finaux + avance transactionnelle
     function setupTimer(game) {
       clearInterval(timerInterval);
       if (progressRAF) { cancelAnimationFrame(progressRAF); progressRAF = null; }
@@ -660,29 +772,43 @@
       const { settings, phase, tsStart } = game;
       const per = (phase === "answer") ? settings.turnDuration : settings.delayBetween;
       const bar = el('timerBar');
+      const timerText = el('timer');
       const startedAt = Number(game.tsStart);
 
       if (!tsStart || !Number.isFinite(startedAt)) {
-        el("timer").textContent = "";
+        timerText.textContent = "";
         bar.style.transform = 'scaleX(0)';
         bar.classList.remove('danger');
+        timerText.classList.remove('timer-final');
+        if (flashLayer) flashLayer.classList.remove('show');
         return;
       }
 
-      // Chrono (texte), tické à la seconde
+      // Chrono (texte)
       let lastShown = null;
       const secTick = () => {
         const now = Date.now();
         let left = per - Math.floor((now - startedAt)/1000);
         if (!Number.isFinite(left)) left = per;
         left = Math.max(0, Math.min(per, left));
+
+        // affichage
         if (left !== lastShown) {
-          el("timer").textContent = `${left}s`;
+          timerText.textContent = `${left}s`;
           lastShown = left;
         }
+
+        // effets finaux 3..2..1
+        const finalPhase = left <= 3 && left > 0;
+        timerText.classList.toggle('timer-final', finalPhase);
+        bar.classList.toggle('danger', left <= 3 + 1e-3);
+        if (flashLayer) flashLayer.classList.toggle('show', finalPhase);
+
         if (left <= 0) {
           clearInterval(timerInterval);
-          tryAdvancePhase();
+          timerText.classList.remove('timer-final');
+          if (flashLayer) flashLayer.classList.remove('show');
+          tryAdvancePhase(); // answer->between ou between->next
         }
       };
       secTick();
@@ -696,8 +822,6 @@
         const ratio = clamped / per || 0;
 
         bar.style.transform = `scaleX(${ratio})`;
-        bar.classList.toggle('danger', clamped <= 3 + 1e-3);
-
         if (clamped > 0) {
           progressRAF = requestAnimationFrame(loop);
         } else {
@@ -707,7 +831,7 @@
       loop();
     }
 
-    // -------- Avance de phase (lock transactionnel) --------
+    // Avance de phase (lock transactionnel)
     async function tryAdvancePhase() {
       const lockRef = ref(db, `rooms/${ROOM_ID}/state/lock`);
       const now = Date.now();
@@ -734,7 +858,7 @@
         if (left > 0) return; // pas fini en réalité (lag)
 
         if (st.phase === "answer") {
-          await closeAndScoreTurn();   // passe en between
+          await closeAndScoreTurn();   // passe en between (prépare NEXT_SORT_LOCAL côté hôte)
         } else if (st.phase === "between") {
           await startNextTurn(st);     // tour suivant
         }
@@ -743,7 +867,7 @@
       }
     }
 
-    // -------- Scoring (Room) + Top3 badges + Global --------
+    // Scoring (Room) + Top3 badges + Global + PREP local next sort (host only)
     async function closeAndScoreTurn() {
       const stSnap = await get(stateRef);
       const game = stSnap.val();
@@ -811,13 +935,24 @@
       }
       await Promise.all(ops);
 
-      // calcule et push le TOP3 (par diff croissant)
+      // calcule TOP3
       podiumArray.sort((a,b)=> a.diff - b.diff || a.value - b.value);
       const top3 = podiumArray.slice(0, 3);
 
-      await update(stateRef, { phase: "between", tsStart: serverTimestamp(), top3 });
+      // (host-only) préparer le prochain sort en local
+      if (isHost) {
+        const spells = await loadSpells();
+        NEXT_SORT_LOCAL = randomSpell(spells);
+      }
 
-      // rendu immédiat + mise à jour stats locales/historique
+      // passe en between (sans nextSort en base)
+      await update(stateRef, {
+        phase: "between",
+        tsStart: serverTimestamp(),
+        top3
+      });
+
+      // rendu immédiat + stats locales/historique
       setTimeout(async () => {
         const snapshot = await get(playersRef);
         const playersObj = snapshot.val() || {};
@@ -869,6 +1004,7 @@
       }
     }
 
+    // PACK 3: utiliser le next sort local (hôte) pour lancer le tour suivant
     async function startNextTurn(prevGame) {
       const { turn, settings } = prevGame;
       if (turn >= settings.totalTurns) {
@@ -877,14 +1013,21 @@
       }
       await clearPlayersDeltas();
 
-      const spells = await loadSpells();
-      const next = randomSpell(spells);
+      let chosen;
+      if (isHost && NEXT_SORT_LOCAL) {
+        chosen = NEXT_SORT_LOCAL;
+      } else {
+        const spells = await loadSpells();
+        chosen = randomSpell(spells);
+      }
+      NEXT_SORT_LOCAL = null;
+
       await set(stateRef, {
         host: prevGame.host,
         settings,
         turn: turn + 1,
         phase: "answer",
-        sort: next,
+        sort: chosen,
         tsStart: serverTimestamp(),
         top3: null
       });
@@ -947,9 +1090,12 @@
       el('leaderboard').innerHTML = rows;
     }
 
-    // Between info + TOP 3 (badges) — PACK #2: bonne réponse en gros + animation
+    // Between info + TOP 3 (badges) — PACK #2 + SAFE si GAME_OVER
     function renderBetweenInfo(playersObj) {
-      if (!GAME_CACHE || GAME_CACHE.phase !== 'between') { el('betweenInfo').innerHTML = ''; return; }
+      if (GAME_OVER || !GAME_CACHE || GAME_CACHE.phase !== 'between') { 
+        el('betweenInfo').innerHTML = ''; 
+        return; 
+      }
       const correct = GAME_CACHE?.sort?.cd;
       const me = playersObj?.[uid] || {};
 
@@ -994,17 +1140,28 @@
       `;
     }
 
-    // Fin de partie + relance
+    // Fin de partie + relance (avec cleanup total des effets) + FLAG
     function finDePartie(hostId) {
+      GAME_OVER = true;
+
+      // Stoppe toute animation/flash résiduel
+      if (timerInterval) clearInterval(timerInterval);
+      if (progressRAF) { cancelAnimationFrame(progressRAF); progressRAF = null; }
+      const timerText = el('timer');
+      timerText.classList.remove('timer-final');
+      if (flashLayer) flashLayer.classList.remove('show');
+      el('timerBar').style.transform = 'scaleX(0)';
+
       el("sortDisplay").innerHTML = "🎉 Fin de la partie !";
       el("answerSection").classList.add("hidden");
       el("status").textContent = "Merci d’avoir joué !";
       el("timer").textContent = "";
       el("leaderboardSection").classList.remove("hidden");
+
       get(playersRef).then(s => { 
         const obj = s.val() || {};
         renderLeaderboardFrom(obj);
-        renderBetweenInfo(obj);
+        // pas de renderBetweenInfo si GAME_OVER
       });
 
       const showRestart = hostId === uid;
@@ -1016,6 +1173,9 @@
         const resetScores = el("resetScores").checked;
         const st = (await get(stateRef)).val();
         if (!st || st.host !== uid) { alert("Seul l'hôte peut relancer la partie."); return; }
+
+        GAME_OVER = false;
+        NEXT_SORT_LOCAL = null;
 
         if (resetScores) {
           const players = (await get(playersRef)).val() || {};
@@ -1055,7 +1215,7 @@
         el("waitingHost").style.display = "none";
       } catch (e) {
         console.error("Relance échouée:", e);
-        alert("Relance impossible : " + (e?.code || e?.message || e));
+        alert("Relance impossible : " + (e?.message || e));
       }
     });
 
@@ -1121,7 +1281,7 @@
     setInterval(kickIfHostAFK, 30*1000);
     onValue(stateRef, () => { kickIfHostAFK(); });
 
-    // -------- Stats locales + Historique --------
+    // Stats locales + Historique
     document.getElementById('toggleHistory').addEventListener('click', ()=>{
       document.getElementById('historyWrap').classList.toggle('hidden');
       renderHistory();
@@ -1214,6 +1374,7 @@
       if (timerInterval) clearInterval(timerInterval);
       if (progressRAF) cancelAnimationFrame(progressRAF);
       if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (flashLayer) flashLayer.classList.remove('show');
     });
   </script>
 </body>
